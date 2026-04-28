@@ -601,6 +601,14 @@
         showToast('Chamado excluído!');
       } catch(e) { showToast('Erro ao excluir chamado.'); }
     };
+
+    window.excluirFeedback = async (docId) => {
+      if (!confirm('Tem certeza que deseja excluir este feedback?\n\nEsta ação não pode ser desfeita.')) return;
+      try {
+        await deleteDoc(doc(db, 'feedbacks', docId));
+        showToast('Feedback excluído!');
+      } catch(e) { showToast('Erro ao excluir feedback.'); }
+    };
   });
 
   function updateMetrics() {
@@ -761,7 +769,10 @@
         <div class="fb-card-header">
           <span class="fb-type-badge fb-${f.tipo||'Geral'}">${f.tipo||'Geral'}</span>
           ${f.assunto?`<span style="font-weight:600;font-size:0.88rem;">${f.assunto}</span>`:''}
-          <span style="margin-left:auto;font-size:0.75rem;color:var(--ink3);">${fds(f.data)}</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:0.75rem;color:var(--ink3);">${fds(f.data)}</span>
+            <button onclick="excluirFeedback('${f._docId}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.75rem;font-weight:600;color:var(--danger);cursor:pointer;font-family:'Space Grotesk',sans-serif;" title="Excluir feedback">🗑️</button>
+          </span>
         </div>
         <div class="fb-text">${f.texto}</div>
         <div class="fb-meta">Por: <strong>${f.nome||'Anônimo'}</strong></div>
