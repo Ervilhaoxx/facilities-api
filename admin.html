@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin · Facilities LogComex</title>
+<title>Facilities · LogComex</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,543 +12,594 @@
     --orange: #FE8F1C; --black: #0B0D19;
     --ink: #1a1d2e; --ink2: #4a4d60; --ink3: #8e91a8;
     --surface: #ffffff; --surface2: #f8f7fc; --surface3: #eeeaf8;
-    --border: rgba(102,19,208,0.1); --border2: rgba(102,19,208,0.2);
+    --border: rgba(102,19,208,0.1);
     --success: #12b76a; --success-bg: #e8f8ef;
-    --warning: #d97706; --warning-bg: #fffbeb;
     --danger: #ef4444; --danger-bg: #fef2f2;
-    --info: #0ea5e9; --info-bg: #e0f2fe;
-    --radius: 12px; --radius-sm: 8px; --sidebar: 240px;
+    --warning: #d97706; --warning-bg: #fffbeb;
+    --radius: 14px; --radius-sm: 8px; --radius-lg: 20px;
   }
-  html, body { height: 100%; }
-  body { font-family: 'Space Grotesk', sans-serif; background: var(--surface2); color: var(--ink); display: flex; min-height: 100vh; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--surface2); color: var(--ink); min-height: 100vh; line-height: 1.6; }
+
+  .loading-screen { position: fixed; inset: 0; background: var(--black); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(102,19,208,0.3); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* LOGIN */
-  .login-overlay { position: fixed; inset: 0; background: var(--black); display: flex; align-items: center; justify-content: center; z-index: 999; }
-  .login-box { background: #13152a; border: 1px solid rgba(102,19,208,0.3); border-radius: 20px; padding: 2.5rem; width: 380px; text-align: center; box-shadow: 0 0 60px rgba(102,19,208,0.15); }
-  .login-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 0.4rem; }
-  .login-logo-mark { width: 36px; height: 36px; background: var(--purple); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: #fff; }
-  .login-logo-text { font-weight: 700; font-size: 1.1rem; color: #fff; letter-spacing: -0.02em; }
-  .login-sub { color: rgba(255,255,255,0.35); font-size: 0.82rem; margin-bottom: 2rem; }
-  .login-box input { width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; outline: none; margin-bottom: 10px; transition: border-color 0.18s; }
-  .login-box input:focus { border-color: var(--purple); }
-  .login-box input::placeholder { color: rgba(255,255,255,0.25); }
-  .login-btn { width: 100%; padding: 12px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: background 0.18s; }
-  .login-btn:hover { background: var(--purple-dark); }
-  .login-error { color: #f87171; font-size: 0.82rem; margin-top: 8px; display: none; }
+  .auth-screen { position: fixed; inset: 0; background: var(--black); display: none; align-items: center; justify-content: center; z-index: 998; }
+  .auth-box { background: #13152a; border: 1px solid rgba(102,19,208,0.3); border-radius: 20px; padding: 2.5rem; width: 400px; box-shadow: 0 0 60px rgba(102,19,208,0.15); }
+  .auth-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 0.4rem; }
+  .auth-logo-mark { width: 38px; height: 38px; background: var(--purple); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .auth-logo-mark::before { content: ''; position: absolute; width: 12px; height: 12px; background: var(--orange); border-radius: 50%; top: 3px; right: 3px; }
+  .auth-logo-mark::after { content: 'L'; position: absolute; bottom: 3px; left: 8px; color: #fff; font-size: 14px; font-weight: 700; }
+  .auth-logo-text { font-weight: 700; font-size: 1.1rem; color: #fff; }
+  .auth-tagline { color: rgba(255,255,255,0.35); font-size: 0.82rem; text-align: center; margin-bottom: 2rem; }
+  .auth-box label { font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.55); display: block; margin-bottom: 5px; margin-top: 0.9rem; }
+  .auth-box input { width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.18s; }
+  .auth-box input:focus { border-color: var(--purple); }
+  .auth-box input::placeholder { color: rgba(255,255,255,0.2); }
+  .btn-auth { width: 100%; padding: 12px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 1.2rem; transition: background 0.18s; box-shadow: 0 4px 14px rgba(102,19,208,0.35); }
+  .btn-auth:hover { background: var(--purple-dark); }
+  .auth-error { color: #f87171; font-size: 0.82rem; margin-top: 0.6rem; text-align: center; display: none; }
+  .auth-footer { text-align: center; margin-top: 1.2rem; font-size: 0.78rem; color: rgba(255,255,255,0.25); }
+  .forgot-link { color: rgba(102,19,208,0.8); text-decoration: none; font-size: 0.78rem; display: block; text-align: right; margin-top: 4px; cursor: pointer; }
+  .forgot-link:hover { color: var(--purple-mid); }
+  .change-pass-notice { background: rgba(254,143,28,0.12); border: 1px solid rgba(254,143,28,0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1rem; font-size: 0.82rem; color: var(--orange); line-height: 1.5; }
+  .pass-strength { height: 4px; border-radius: 2px; margin-top: 6px; background: rgba(255,255,255,0.1); overflow: hidden; }
+  .pass-strength-bar { height: 100%; border-radius: 2px; transition: all 0.3s; width: 0%; }
 
-  /* SIDEBAR */
-  .sidebar { width: var(--sidebar); background: var(--black); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 1.5rem 1rem; z-index: 50; }
-  .sb-logo { display: flex; align-items: center; gap: 10px; padding: 0 0.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 1.2rem; }
-  .sb-logo-mark { width: 30px; height: 30px; background: var(--purple); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; }
-  .sb-logo-text { font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: -0.02em; }
-  .sb-logo-sub { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 1px; }
-  .sb-nav { flex: 1; }
-  .sb-section { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 0 0.5rem; margin: 1.2rem 0 0.5rem; }
-  .nav-item { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: var(--radius-sm); color: rgba(255,255,255,0.45); font-size: 0.87rem; cursor: pointer; transition: all 0.15s; text-decoration: none; font-weight: 500; }
-  .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
-  .nav-item.active { background: rgba(102,19,208,0.25); color: var(--purple-mid); }
-  .nav-badge { margin-left: auto; background: var(--orange); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 100px; min-width: 20px; text-align: center; }
-  .sb-footer { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 1rem; }
-  .user-info { display: flex; align-items: center; gap: 10px; padding: 8px 10px; }
-  .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(102,19,208,0.3); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--purple-mid); border: 1px solid rgba(102,19,208,0.4); }
-  .user-name { font-size: 0.83rem; font-weight: 600; color: rgba(255,255,255,0.7); }
-  .user-role { font-size: 0.7rem; color: rgba(255,255,255,0.28); }
-  .logout-btn { width: 100%; margin-top: 8px; padding: 8px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: rgba(255,255,255,0.35); font-size: 0.82rem; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
-  .logout-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.65); }
+  /* HEADER */
+  .site-header { background: var(--black); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 62px; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-mark { width: 34px; height: 34px; background: var(--purple); border-radius: 9px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .logo-mark::before { content: ''; position: absolute; width: 12px; height: 12px; background: var(--orange); border-radius: 50%; top: 4px; right: 4px; }
+  .logo-mark::after { content: 'L'; font-weight: 700; font-size: 15px; color: #fff; position: absolute; bottom: 3px; left: 8px; }
+  .logo-text { font-weight: 700; font-size: 1rem; color: #fff; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--purple-mid); font-weight: 400; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-user { color: rgba(255,255,255,0.5); font-size: 0.82rem; }
+  .header-btn { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 0.82rem; font-weight: 500; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; transition: all 0.2s; cursor: pointer; background: none; font-family: 'Space Grotesk', sans-serif; }
+  .header-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+  .admin-btn { color: var(--purple-mid); border-color: rgba(102,19,208,0.3); }
 
-  /* MAIN */
-  .main { margin-left: var(--sidebar); flex: 1; padding: 2rem; min-height: 100vh; }
-  .page { display: none; }
-  .page.active { display: block; }
+  /* HERO */
+  .hero { background: var(--black); padding: 3.5rem 2rem 5rem; text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 600px; height: 400px; background: radial-gradient(ellipse, rgba(102,19,208,0.3) 0%, transparent 65%); pointer-events: none; }
+  .hero-eyebrow { display: inline-flex; align-items: center; gap: 7px; background: rgba(102,19,208,0.2); color: var(--purple-mid); font-size: 0.74rem; font-weight: 600; padding: 5px 14px; border-radius: 100px; border: 1px solid rgba(102,19,208,0.35); margin-bottom: 1.3rem; letter-spacing: 0.06em; text-transform: uppercase; position: relative; z-index: 1; }
+  .eyebrow-dot { width: 6px; height: 6px; background: var(--orange); border-radius: 50%; }
+  .hero h1 { font-weight: 700; font-size: clamp(2rem, 5vw, 3rem); color: #fff; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 0.9rem; position: relative; z-index: 1; }
+  .hero h1 em { font-style: normal; color: var(--purple-mid); }
+  .hero p { color: rgba(255,255,255,0.45); font-size: 1rem; max-width: 420px; margin: 0 auto; position: relative; z-index: 1; }
 
-  /* TOPBAR */
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem; }
-  .page-title { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.04em; }
-  .topbar-actions { display: flex; gap: 10px; align-items: center; }
-  .btn { padding: 9px 18px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
-  .btn-primary { background: var(--purple); color: #fff; border: none; box-shadow: 0 3px 10px rgba(102,19,208,0.25); }
-  .btn-primary:hover { background: var(--purple-dark); }
-  .btn-secondary { background: var(--surface); color: var(--ink2); border: 1px solid var(--border); }
-  .btn-secondary:hover { background: var(--purple-light); border-color: var(--border2); }
+  /* CONTENT */
+  .content { max-width: 900px; margin: -2rem auto 0; padding: 0 1.5rem 4rem; }
+  .section-label { font-size: 0.71rem; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.9rem; display: flex; align-items: center; gap: 8px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  /* METRICS */
-  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.8rem; }
-  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; position: relative; overflow: hidden; }
-  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 2px 2px 0 0; }
-  .metric-card.purple::before { background: var(--purple); }
-  .metric-card.orange::before { background: var(--orange); }
-  .metric-card.green::before { background: var(--success); }
-  .metric-card.red::before { background: var(--danger); }
-  .metric-card.gray::before { background: var(--ink3); }
-  .metric-label { font-size: 0.72rem; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.5rem; }
-  .metric-value { font-weight: 700; font-size: 2rem; letter-spacing: -0.05em; line-height: 1; margin-bottom: 0.3rem; }
-  .metric-sub { font-size: 0.75rem; color: var(--ink3); }
+  /* CATEGORIES */
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 2rem; }
+  .cat-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1rem 0.6rem; text-align: center; cursor: pointer; transition: all 0.18s ease; position: relative; }
+  .cat-card:hover { border-color: var(--purple); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102,19,208,0.1); }
+  .cat-card.selected { border-color: var(--purple); background: var(--purple-light); }
+  .cat-card.selected .cat-name { color: var(--purple-dark); }
+  .cat-icon { font-size: 1.5rem; display: block; margin-bottom: 0.4rem; }
+  .cat-name { font-size: 0.72rem; font-weight: 600; color: var(--ink2); line-height: 1.3; }
+  .cat-attach-dot { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff; }
 
-  /* FILTERS */
-  .filters-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
-  .fi-input { padding: 8px 12px; border: 1.5px solid var(--surface3); border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.84rem; color: var(--ink); background: var(--surface2); outline: none; transition: border-color 0.15s; }
-  .fi-input:focus { border-color: var(--purple); }
-  .fi-input.wide { flex: 1; min-width: 180px; }
-  select.fi-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e91a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; appearance: none; }
-
-  /* TABLE */
-  .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
-  thead th { padding: 12px 14px; text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; cursor: pointer; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--purple-light); }
-  td { padding: 13px 14px; color: var(--ink2); vertical-align: middle; }
-  .tid { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.78rem; color: var(--purple); }
-
-  /* BADGES */
-  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-size: 0.73rem; font-weight: 600; white-space: nowrap; }
-  .b-aberto { background: var(--info-bg); color: var(--info); }
-  .b-andamento { background: var(--warning-bg); color: var(--warning); }
-  .b-aprovacao { background: #f3e8ff; color: #9333ea; }
-  .b-concluido { background: var(--success-bg); color: var(--success); }
-  .b-cancelado { background: var(--surface3); color: var(--ink3); }
-  .pb { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.71rem; font-weight: 700; }
-  .pb-Baixa { background: var(--success-bg); color: var(--success); }
-  .pb-Média { background: var(--warning-bg); color: var(--warning); }
-  .pb-Alta { background: #fff4e5; color: #e45c10; }
-  .pb-Urgente { background: var(--danger-bg); color: var(--danger); }
-  .empty-state { text-align: center; padding: 3rem; color: var(--ink3); }
-  .empty-state div { font-size: 2.5rem; margin-bottom: 1rem; }
-
-  /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(11,13,25,0.5); z-index: 200; display: none; align-items: flex-start; justify-content: flex-end; padding: 1rem; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border-radius: 18px; width: 500px; max-height: calc(100vh - 2rem); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideIn 0.2s ease; }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-  .modal-header { padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
-  .modal-title { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; line-height: 1.3; }
-  .modal-close { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--ink3); flex-shrink: 0; transition: all 0.15s; }
-  .modal-close:hover { background: var(--purple-light); color: var(--purple); }
-  .modal-body { padding: 1.5rem; }
-  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.2rem; }
-  .detail-item label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink3); display: block; margin-bottom: 3px; }
-  .detail-item p { font-size: 0.87rem; color: var(--ink2); }
-  .detail-desc { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.9rem; font-size: 0.86rem; color: var(--ink2); line-height: 1.6; margin-bottom: 1.2rem; white-space: pre-wrap; border: 1px solid var(--border); }
-  .modal-section { font-size: 0.7rem; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.7rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
-  .status-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
-  .status-btn { padding: 7px 13px; border-radius: 100px; border: 1.5px solid var(--surface3); font-size: 0.78rem; font-weight: 600; cursor: pointer; background: var(--surface2); color: var(--ink3); font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
-  .status-btn.active-s { background: var(--purple-light); color: var(--purple); border-color: var(--purple); }
-  .comment-box textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--surface3); border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.86rem; color: var(--ink); background: var(--surface); resize: vertical; min-height: 75px; outline: none; }
-  .comment-box textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(102,19,208,0.08); }
-  .comment-save { margin-top: 8px; width: 100%; padding: 10px; background: var(--black); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.87rem; cursor: pointer; transition: background 0.15s; }
-  .comment-save:hover { background: var(--purple); }
-  .history-list { margin-top: 0.5rem; }
-  .history-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .history-item:last-child { border-bottom: none; }
-  .history-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); margin-top: 6px; flex-shrink: 0; }
-  .history-action { font-size: 0.84rem; color: var(--ink2); }
-  .history-meta { font-size: 0.73rem; color: var(--ink3); margin-top: 2px; }
-
-  /* FEEDBACK PAGE */
-  .feedback-list { display: flex; flex-direction: column; gap: 12px; }
-  .fb-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
-  .fb-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
-  .fb-type-badge { padding: 3px 10px; border-radius: 100px; font-size: 0.73rem; font-weight: 700; }
-  .fb-Crítica { background: var(--danger-bg); color: var(--danger); }
-  .fb-Sugestão { background: var(--info-bg); color: var(--info); }
-  .fb-Elogio { background: var(--success-bg); color: var(--success); }
-  .fb-Ideia { background: #f3e8ff; color: #9333ea; }
-  .fb-Processo { background: var(--warning-bg); color: var(--warning); }
-  .fb-Geral { background: var(--surface3); color: var(--ink3); }
-  .fb-assunto { font-weight: 600; font-size: 0.88rem; color: var(--ink); }
-  .fb-text { font-size: 0.85rem; color: var(--ink2); line-height: 1.6; margin-bottom: 0.75rem; }
-  .fb-meta { font-size: 0.75rem; color: var(--ink3); }
-
-  /* TOAST */
-  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--black); color: #fff; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 0.87rem; z-index: 999; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; border: 1px solid rgba(102,19,208,0.3); }
-  .toast.show { opacity: 1; transform: translateY(0); }
-
-  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 1rem; } .modal { width: 100%; } }
+  /* FORM */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 24px rgba(102,19,208,0.06); }
+  .form-card-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: #faf8ff; display: flex; align-items: center; gap: 12px; }
+  .fch-icon { width: 48px; height: 48px; background: var(--purple-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+  .fch-title { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.02em; }
+  .fch-sub { font-size: 0.8rem; color: var(--ink3); margin-top: 2px; }
+  .form-body { padding: 2rem; }
+  .fs-title { font-size: 0.71rem; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .form-row.full { grid-template-columns: 1fr; }
+  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .form-body { padding: 1.25rem; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 0.8rem; font-weight: 600; color: var(--ink2); }
+  label .req { color: var(--orange); }
+  input[type="text"], input[type="email"], input[type="date"], select, textarea { width: 100%; padding: 10px 13px; border: 1.5px solid #e8e4f5; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; color: var(--ink); background: var(--surface); outline: none; transition: border-color 0.18s, box-shadow 0.18s; appearance: none; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(102,19,208,0.08); }
+  textarea { resize: vertical; min-height: 100px; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e91a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; cursor: pointer; }
+  .priority-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .priority-opt { display: none; }
+  .priority-label { padding: 7px 15px; border-radius: 100px; border: 1.5px solid #e8e4f5; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; color: var(--ink3); user-select: none; }
+  #prio-baixa:checked + .priority-label { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  #prio-media:checked + .priority-label { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
+  #prio-alta:checked + .priority-label { background: #fff4e5; color: #e45c10; border-color: #e45c10; }
+  #prio-urgente:checked + .priority-label { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-input { display: none; }
+  .chip-label { padding: 6px 13px; border-radius: 100px; border: 1.5px solid #e8e4f5; font-size: 0.8rem; font-weight: 500; cursor: pointer; color: var(--ink3); transition: all 0.15s; user-select: none; }
+  .chip-input:checked + .chip-label { background: var(--purple-light); color: var(--purple); border-color: var(--purple); }
+  .attach-box { border: 2px dashed #d4c5f5; border-radius: var(--radius); padding: 1.2rem; text-align: center; cursor: pointer; transition: all 0.18s; position: relative; background: #faf8ff; }
+  .attach-box:hover { border-color: var(--purple); background: var(--purple-light); }
+  .attach-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .attach-box p { font-size: 0.82rem; color: var(--ink3); }
+  .attach-box strong { color: var(--purple); }
+  #file-name { font-size: 0.78rem; color: var(--success); margin-top: 5px; }
+  .attach-required-note { font-size: 0.74rem; color: var(--orange); font-weight: 600; margin-top: 4px; }
+  #attach-wrap { display: none; }
+  .conditional { display: none; }
+  .gap { margin-bottom: 1.2rem; }
+  .form-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); gap: 1rem; flex-wrap: wrap; }
+  .form-note { font-size: 0.78rem; color: var(--ink3); max-width: 340px; line-height: 1.5; }
+  .btn-submit { background: var(--purple); color: #fff; border: none; padding: 13px 32px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.18s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(102,19,208,0.3); }
+  .btn-submit:hover { background: var(--purple-dark); transform: translateY(-1px); }
+  .feedback-shell { background: linear-gradient(135deg, #0B0D19 0%, #1a0a3a 100%); border-radius: var(--radius-lg); padding: 2rem; position: relative; overflow: hidden; }
+  .feedback-shell::before { content: ''; position: absolute; top: -60px; right: -40px; width: 200px; height: 200px; background: radial-gradient(ellipse, rgba(102,19,208,0.4) 0%, transparent 70%); pointer-events: none; }
+  .fb-header { display: flex; gap: 14px; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+  .fb-icon-wrap { width: 48px; height: 48px; background: rgba(102,19,208,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; border: 1px solid rgba(102,19,208,0.4); }
+  .fb-title { font-weight: 700; font-size: 1.1rem; color: #fff; letter-spacing: -0.03em; }
+  .fb-sub { font-size: 0.81rem; color: rgba(255,255,255,0.4); margin-top: 3px; line-height: 1.5; }
+  .fb-form { position: relative; z-index: 1; }
+  .ftype-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1.2rem; }
+  .ftype-input { display: none; }
+  .ftype-label { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); cursor: pointer; transition: all 0.15s; color: rgba(255,255,255,0.45); font-size: 0.72rem; font-weight: 600; text-align: center; user-select: none; }
+  .ftype-label .fi { font-size: 1.2rem; display: block; }
+  .ftype-input:checked + .ftype-label { background: rgba(102,19,208,0.3); border-color: var(--purple); color: var(--purple-mid); }
+  .fb-form label { color: rgba(255,255,255,0.55); font-size: 0.8rem; }
+  .fb-form input[type="text"], .fb-form textarea { background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); color: #fff; font-family: 'Space Grotesk', sans-serif; }
+  .fb-form input[type="text"]::placeholder, .fb-form textarea::placeholder { color: rgba(255,255,255,0.25); }
+  .fb-form input:focus, .fb-form textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(102,19,208,0.2); background: rgba(255,255,255,0.08); }
+  .anon-row { display: flex; align-items: center; gap: 8px; margin-top: 0.75rem; }
+  .anon-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); cursor: pointer; flex-shrink: 0; }
+  .anon-row label { font-size: 0.79rem; color: rgba(255,255,255,0.4); cursor: pointer; font-weight: 400; }
+  .btn-feedback { margin-top: 1rem; width: 100%; padding: 12px; background: var(--purple); border: none; border-radius: var(--radius-sm); color: #fff; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.18s; }
+  .btn-feedback:hover { background: var(--purple-dark); }
+  .fb-success { display: none; text-align: center; padding: 2rem; color: #fff; position: relative; z-index: 1; }
+  .fb-success .fs-icon { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+  .fb-success h3 { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .fb-success p { color: rgba(255,255,255,0.4); font-size: 0.85rem; }
+  .success-screen { display: none; text-align: center; padding: 4rem 2rem; max-width: 500px; margin: 3rem auto; }
+  .success-icon { width: 80px; height: 80px; background: var(--purple-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.2rem; border: 3px solid var(--purple-mid); }
+  .success-screen h2 { font-weight: 700; font-size: 1.7rem; margin-bottom: 0.75rem; letter-spacing: -0.04em; }
+  .success-screen p { color: var(--ink3); font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .ticket-number { display: inline-block; background: var(--black); color: var(--purple-mid); font-weight: 700; font-size: 1.1rem; padding: 8px 24px; border-radius: 100px; margin: 0.75rem 0; letter-spacing: 0.05em; border: 1px solid rgba(102,19,208,0.3); }
+  .btn-new { background: var(--surface2); border: 1.5px solid var(--border); color: var(--ink); padding: 11px 24px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.18s; margin-top: 1rem; }
+  .btn-new:hover { background: var(--purple-light); border-color: var(--purple); color: var(--purple); }
+  #default-state { text-align: center; padding: 2.5rem 1rem; color: var(--ink3); }
 </style>
 </head>
 <body>
 
+<div class="loading-screen" id="loading-screen"><div class="loading-spinner"></div></div>
+
 <!-- LOGIN -->
-<div class="login-overlay" id="login-overlay">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-logo-mark">L</div>
-      <div>
-        <div class="login-logo-text">LogComex</div>
-      </div>
-    </div>
-    <div class="login-sub">Acesso restrito · Equipe de Facilities</div>
-    <input type="text" id="lu" placeholder="Usuário" autocomplete="off">
-    <input type="password" id="lp" placeholder="Senha" onkeydown="if(event.key==='Enter')login()">
-    <button class="login-btn" onclick="login()">Entrar no painel</button>
-    <div class="login-error" id="lerr">Usuário ou senha incorretos</div>
-    <p style="font-size:0.7rem;color:rgba(255,255,255,0.18);margin-top:1rem;">admin / facilities2024 &nbsp;·&nbsp; chefe / chefe123 &nbsp;·&nbsp; colega / colega123</p>
+<div class="auth-screen" id="login-screen">
+  <div class="auth-box">
+    <div class="auth-logo"><div class="auth-logo-mark"></div><span class="auth-logo-text">LogComex</span></div>
+    <div class="auth-tagline">Facilities · Central de Chamados</div>
+    <label>E-mail corporativo</label>
+    <input type="email" id="login-email" placeholder="nome@logcomex.com" onkeydown="if(event.key==='Enter')doLogin()">
+    <label>Senha</label>
+    <input type="password" id="login-pass" placeholder="Sua senha" onkeydown="if(event.key==='Enter')doLogin()">
+    <span class="forgot-link" onclick="forgotPassword()">Esqueci minha senha</span>
+    <button class="btn-auth" onclick="doLogin()">Entrar</button>
+    <div class="login-error auth-error" id="login-error">E-mail ou senha incorretos.</div>
+    <div class="auth-footer">Não tem acesso? Fale com o RH ou Facilities.</div>
   </div>
 </div>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sb-logo">
-    <div class="sb-logo-mark">L</div>
-    <div>
-      <div class="sb-logo-text">Facilities</div>
-      <div class="sb-logo-sub">LogComex</div>
-    </div>
+<!-- CHANGE PASSWORD (admins only) -->
+<div class="auth-screen" id="change-pass-screen">
+  <div class="auth-box">
+    <div class="auth-logo"><div class="auth-logo-mark"></div><span class="auth-logo-text">LogComex</span></div>
+    <div class="auth-tagline">Segurança · Defina sua senha</div>
+    <div class="change-pass-notice">🔐 Por segurança, você precisa criar uma senha pessoal antes de continuar. A senha padrão não é permitida para administradores.</div>
+    <label>Nova senha <span style="color:var(--orange);">*</span></label>
+    <input type="password" id="new-pass" placeholder="Mínimo 8 caracteres" oninput="checkStrength(this.value)">
+    <div class="pass-strength"><div class="pass-strength-bar" id="strength-bar"></div></div>
+    <label>Confirmar nova senha <span style="color:var(--orange);">*</span></label>
+    <input type="password" id="confirm-pass" placeholder="Repita a nova senha" onkeydown="if(event.key==='Enter')doChangePass()">
+    <button class="btn-auth" onclick="doChangePass()">Definir senha e entrar</button>
+    <div class="auth-error" id="change-pass-error"></div>
   </div>
-  <nav class="sb-nav">
-    <div class="sb-section">Principal</div>
-    <div class="nav-item active" onclick="nav('dashboard',this)"><span>📊</span> Dashboard</div>
-    <div class="nav-item" onclick="nav('chamados',this)"><span>🎫</span> Chamados<span class="nav-badge" id="badge-n">0</span></div>
-    <div class="nav-item" onclick="nav('feedbacks',this)"><span>💡</span> Feedbacks<span class="nav-badge" id="badge-fb" style="background:var(--purple);">0</span></div>
-    <div class="sb-section">Filtros rápidos</div>
-    <div class="nav-item" onclick="nav('chamados',this);qs('Aberto')"><span>🔵</span> Abertos</div>
-    <div class="nav-item" onclick="nav('chamados',this);qs('Em andamento')"><span>🟠</span> Em andamento</div>
-    <div class="nav-item" onclick="nav('chamados',this);qs('Urgente')"><span>🔴</span> Urgentes</div>
-    <div class="sb-section">Links</div>
-    <a href="index.html" class="nav-item"><span>↗</span> Formulário público</a>
-  </nav>
-  <div class="sb-footer">
-    <div class="user-info">
-      <div class="user-avatar" id="uav">AD</div>
-      <div><div class="user-name" id="uname">Admin</div><div class="user-role">Facilities</div></div>
-    </div>
-    <button class="logout-btn" onclick="logout()">Sair</button>
-  </div>
-</aside>
+</div>
 
-<!-- MAIN -->
-<main class="main">
+<!-- APP -->
+<div id="app" style="display:none;">
+  <header class="site-header">
+    <a href="#" class="logo"><div class="logo-mark"></div><span class="logo-text">LogComex <span>Facilities</span></span></a>
+    <div class="header-right">
+      <span class="header-user" id="header-user"></span>
+      <span id="admin-link-wrap"></span>
+      <button class="header-btn" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
 
-  <!-- DASHBOARD -->
-  <div class="page active" id="page-dashboard">
-    <div class="topbar">
-      <div><div class="page-title">Dashboard</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;" id="dash-date"></div></div>
-      <div class="topbar-actions">
-        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
-        <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
-      </div>
-    </div>
-    <div class="metrics-grid">
-      <div class="metric-card purple"><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
-      <div class="metric-card orange"><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
-      <div class="metric-card green"><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub">este mês</div></div>
-      <div class="metric-card red"><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">alta prioridade</div></div>
-      <div class="metric-card gray"><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-      <span style="font-weight:700;font-size:0.95rem;">Chamados recentes</span>
-      <button class="btn btn-secondary" style="font-size:0.8rem;padding:7px 14px;" onclick="nav('chamados',document.querySelectorAll('.nav-item')[1])">Ver todos →</button>
-    </div>
-    <div class="table-wrapper"><table><thead><tr><th>Protocolo</th><th>Título</th><th>Categoria</th><th>Prioridade</th><th>Status</th><th>Data</th></tr></thead><tbody id="recent-tb"></tbody></table></div>
+  <div class="hero">
+    <div class="hero-eyebrow"><span class="eyebrow-dot"></span> Central de Chamados</div>
+    <h1>Como podemos<br><em>te ajudar hoje?</em></h1>
+    <p>Selecione uma categoria e nossa equipe de facilities entra em ação.</p>
   </div>
 
-  <!-- CHAMADOS -->
-  <div class="page" id="page-chamados">
-    <div class="topbar">
-      <div class="page-title">Chamados</div>
-      <div class="topbar-actions">
-        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
-        <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
+  <div class="content" id="main-content">
+    <div class="section-label" id="cat-label">Selecione a categoria</div>
+    <div class="cat-grid" id="category-grid">
+      <div class="cat-card" data-cat="manutencao" onclick="selectCat(this)"><span class="cat-icon">🔧</span><span class="cat-name">Manutenção</span></div>
+      <div class="cat-card" data-cat="infraestrutura" onclick="selectCat(this)"><span class="cat-icon">🪑</span><span class="cat-name">Infraestrutura</span><span class="cat-attach-dot">📎</span></div>
+      <div class="cat-card" data-cat="limpeza" onclick="selectCat(this)"><span class="cat-icon">🧹</span><span class="cat-name">Limpeza</span></div>
+      <div class="cat-card" data-cat="seguranca" onclick="selectCat(this)"><span class="cat-icon">🔐</span><span class="cat-name">Segurança e Acesso</span><span class="cat-attach-dot">📎</span></div>
+      <div class="cat-card" data-cat="brindes" onclick="selectCat(this)"><span class="cat-icon">🎁</span><span class="cat-name">Brindes</span><span class="cat-attach-dot">📎</span></div>
+      <div class="cat-card" data-cat="suprimentos" onclick="selectCat(this)"><span class="cat-icon">📦</span><span class="cat-name">Suprimentos</span></div>
+      <div class="cat-card" data-cat="plataformas" onclick="selectCat(this)"><span class="cat-icon">📱</span><span class="cat-name">Acesso Plataformas</span><span class="cat-attach-dot">📎</span></div>
+      <div class="cat-card" data-cat="gestao" onclick="selectCat(this)"><span class="cat-icon">💡</span><span class="cat-name">Gestão e Melhoria</span></div>
+    </div>
+
+    <div class="form-card" id="form-wrapper">
+      <div class="form-card-header">
+        <div class="fch-icon" id="hdr-icon">📋</div>
+        <div><div class="fch-title" id="hdr-title">Abrir chamado</div><div class="fch-sub" id="hdr-sub">Selecione uma categoria acima para começar</div></div>
+      </div>
+      <div class="form-body">
+        <div id="default-state"><div style="font-size:2.2rem;margin-bottom:0.7rem;">☝️</div><p>Selecione uma categoria acima para abrir seu chamado</p></div>
+
+        <div id="gestao-form" class="conditional">
+          <div class="feedback-shell">
+            <div class="fb-header" id="fb-header"><div class="fb-icon-wrap">💡</div><div><div class="fb-title">Gestão &amp; Melhoria</div><div class="fb-sub">Sua opinião molda o LogComex.</div></div></div>
+            <div class="fb-form" id="fb-form">
+              <div class="ftype-grid">
+                <div><input type="radio" name="fbt" id="ft-critica" value="Crítica" class="ftype-input"><label class="ftype-label" for="ft-critica"><span class="fi">⚡</span>Crítica</label></div>
+                <div><input type="radio" name="fbt" id="ft-sugestao" value="Sugestão" class="ftype-input"><label class="ftype-label" for="ft-sugestao"><span class="fi">🔄</span>Sugestão</label></div>
+                <div><input type="radio" name="fbt" id="ft-elogio" value="Elogio" class="ftype-input"><label class="ftype-label" for="ft-elogio"><span class="fi">🏆</span>Elogio</label></div>
+                <div><input type="radio" name="fbt" id="ft-ideia" value="Ideia" class="ftype-input"><label class="ftype-label" for="ft-ideia"><span class="fi">💡</span>Ideia</label></div>
+                <div><input type="radio" name="fbt" id="ft-processo" value="Processo" class="ftype-input"><label class="ftype-label" for="ft-processo"><span class="fi">⚙️</span>Processo</label></div>
+              </div>
+              <div class="field gap"><label>Sobre o que é?</label><input type="text" id="fb-assunto" placeholder="Ex: processo de suprimentos..."></div>
+              <div class="field gap"><label>Conta pra gente <span class="req">*</span></label><textarea id="fb-texto" placeholder="Seja específico..." style="min-height:120px;"></textarea></div>
+              <div class="anon-row"><input type="checkbox" id="fb-anon"><label for="fb-anon">Enviar de forma anônima</label></div>
+              <button class="btn-feedback" onclick="submitFeedback()">Enviar feedback →</button>
+            </div>
+            <div class="fb-success" id="fb-success"><span class="fs-icon">🎉</span><h3>Feedback recebido!</h3><p>Obrigado por contribuir.</p></div>
+          </div>
+        </div>
+
+        <form id="ticket-form" onsubmit="submitTicket(event)" class="conditional">
+          <p class="fs-title gap">👤 Seus dados</p>
+          <div class="form-row gap">
+            <div class="field"><label>Nome completo <span class="req">*</span></label><input type="text" id="nome" required placeholder="Seu nome completo"></div>
+            <div class="field"><label>E-mail corporativo <span class="req">*</span></label><input type="email" id="email" required placeholder="nome@logcomex.com"></div>
+          </div>
+          <div class="form-row gap">
+            <div class="field">
+              <label>Centro de Custo <span class="req">*</span></label>
+              <select id="departamento" required>
+                <option value="">Selecione seu centro de custo...</option>
+                <optgroup label="─ CORPORATE ─"><option>RH CORPORATE</option><option>DP CORPORATE</option><option>DIRETORIA CORPORATE</option><option>FINANCEIRO CORPORATE</option><option>CONTABILIDADE CORPORATE</option><option>CONTROLADORIA CORPORATE</option><option>MARKETING INSTITUCIONAL CORPORATE</option><option>LEGAL/COMPLIANCE CORPORATE</option><option>FACILITIES CORPORATE</option><option>BI E INTEGRACOES CORPORATE</option><option>COALITION CORPORATE</option><option>RELGOV CORPORATE</option><option>OUTROS CORPORATE</option></optgroup>
+                <optgroup label="─ GROWTH ─"><option>REVOPS GROWTH</option><option>REVOPS OPERATIONS GROWTH</option><option>CCO GROWTH</option><option>COMERCIAL GROWTH</option><option>PRE-VENDAS GROWTH</option><option>MARKETING GROWTH</option><option>TECH GROWTH</option><option>TECH AUTOMATION GROWTH</option><option>DADOS GERAL GROWTH</option><option>DADOS GROWTH</option><option>CS GERAL GROWTH</option><option>CS GROWTH</option><option>CS OPS &amp; INSIGHTS GROWTH</option><option>PROFESSIONAL SERVICES GROWTH</option><option>QUALIDADE GERAL GROWTH</option><option>QUALIDADE GROWTH</option><option>SUPORTE GROWTH</option></optgroup>
+                <optgroup label="─ PPMF ─"><option>COMERCIAL PPMF</option><option>COMERCIAL INTERNATIONAL PPMF</option><option>COMERCIAL MEXICO PPMF</option><option>PRE-VENDAS PPMF</option><option>MARKETING PPMF</option><option>MARKETING INTERNACIONAL PPMF</option><option>MARKETING MEXICO PPMF</option><option>TECH PPMF</option><option>TECH GERAL PPMF</option><option>TECH INTERNATIONAL PPMF</option><option>DEVOPS PPMF</option><option>DADOS PPMF</option><option>CS PPMF</option><option>CS INTERNACIONAL PPMF</option><option>CS MEXICO PPMF</option><option>QUALIDADE PPMF</option><option>SUPORTE PPMF</option><option>REVOPS INTELLIGENCE PPMF</option><option>R&amp;D GERAL PPMF</option><option>R&amp;D PPMF</option><option>R&amp;D INTERNACIONAL PPMF</option><option>R&amp;D MEXICO PPMF</option><option>NOVOS NEGOCIOS PPMF</option></optgroup>
+                <optgroup label="─ MVP ─"><option>COMERCIAL MVP</option><option>MARKETING MVP</option><option>DADOS MVP</option><option>R&amp;D MVP</option><option>TECH MVP</option></optgroup>
+                <optgroup label="─ OUTROS ─"><option>R&amp;D GROWTH</option></optgroup>
+              </select>
+            </div>
+            <div class="field"><label>Unidade</label><select id="unidade"><option value="">Selecione...</option><option>Sede Curitiba</option><option>Home Office</option><option>Outro</option></select></div>
+          </div>
+          <p class="fs-title gap">📋 Sobre o chamado</p>
+          <div class="form-row gap">
+            <div class="field"><label>Categoria <span class="req">*</span></label>
+              <select id="categoria" required onchange="onCatChange()">
+                <option value="">Selecione...</option>
+                <option value="manutencao">🔧 Manutenção</option><option value="infraestrutura">🪑 Infraestrutura</option><option value="limpeza">🧹 Limpeza e Conservação</option><option value="seguranca">🔐 Segurança e Acesso</option><option value="brindes">🎁 Gestão de Brindes</option><option value="suprimentos">📦 Suprimentos de Escritório</option><option value="plataformas">📱 Acesso a Plataformas</option>
+              </select>
+            </div>
+            <div class="field"><label>Subcategoria</label><select id="subcategoria"><option value="">Selecione a categoria primeiro...</option></select></div>
+          </div>
+          <div id="plat-section" class="conditional gap">
+            <div class="field"><label>Plataforma(s) <span class="req">*</span></label>
+              <div class="chips">
+                <input type="checkbox" class="chip-input" id="p-uber" name="plataforma" value="Uber"><label class="chip-label" for="p-uber">Uber</label>
+                <input type="checkbox" class="chip-input" id="p-onfly" name="plataforma" value="Onfly"><label class="chip-label" for="p-onfly">Onfly</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-row full gap"><div class="field"><label>Título do chamado <span class="req">*</span></label><input type="text" id="titulo" required placeholder="Descreva brevemente..."></div></div>
+          <div class="form-row full gap"><div class="field"><label>Descrição detalhada <span class="req">*</span></label><textarea id="descricao" required placeholder="Detalhe: o que aconteceu, onde está, desde quando, qual o impacto..."></textarea></div></div>
+          <div class="form-row gap">
+            <div class="field"><label>Prioridade <span class="req">*</span></label>
+              <div class="priority-group">
+                <input type="radio" name="prioridade" id="prio-baixa" value="Baixa" class="priority-opt" required><label class="priority-label" for="prio-baixa">Baixa</label>
+                <input type="radio" name="prioridade" id="prio-media" value="Média" class="priority-opt"><label class="priority-label" for="prio-media">Média</label>
+                <input type="radio" name="prioridade" id="prio-alta" value="Alta" class="priority-opt"><label class="priority-label" for="prio-alta">Alta</label>
+                <input type="radio" name="prioridade" id="prio-urgente" value="Urgente" class="priority-opt"><label class="priority-label" for="prio-urgente">Urgente</label>
+              </div>
+            </div>
+            <div class="field"><label>Data desejada para conclusão</label><input type="date" id="data-desejada"></div>
+          </div>
+          <div id="attach-wrap" class="gap">
+            <div class="field"><label id="attach-lbl">Anexo</label>
+              <div class="attach-box"><input type="file" id="anexo" accept="image/*,.pdf" onchange="onFile(this)">
+                <div style="font-size:1.5rem;margin-bottom:4px;">📎</div>
+                <p><strong>Clique para enviar</strong> ou arraste aqui</p>
+                <p style="font-size:0.74rem;margin-top:2px;">PNG, JPG, PDF até 10MB</p>
+                <div id="file-name"></div>
+                <div class="attach-required-note" id="attach-note"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-footer">
+            <p class="form-note">Você receberá um número de protocolo após o envio.</p>
+            <button type="submit" class="btn-submit">Abrir chamado <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </form>
       </div>
     </div>
-    <div class="filters-bar">
-      <input type="text" class="fi-input wide" id="search" placeholder="🔍 Buscar por título, nome, protocolo..." oninput="renderTable()">
-      <select class="fi-input" id="f-status" onchange="renderTable()">
-        <option value="">Todos os status</option>
-        <option>Aberto</option><option>Em andamento</option><option>Aguardando aprovação</option><option>Concluído</option><option>Cancelado</option>
-      </select>
-      <select class="fi-input" id="f-cat" onchange="renderTable()">
-        <option value="">Todas categorias</option>
-        <option value="manutencao">Manutenção</option><option value="infraestrutura">Infraestrutura</option>
-        <option value="limpeza">Limpeza</option><option value="seguranca">Segurança e Acesso</option>
-        <option value="brindes">Brindes</option><option value="suprimentos">Suprimentos</option><option value="plataformas">Plataformas</option>
-      </select>
-      <select class="fi-input" id="f-prio" onchange="renderTable()">
-        <option value="">Todas prioridades</option>
-        <option>Baixa</option><option>Média</option><option>Alta</option><option>Urgente</option>
-      </select>
-    </div>
-    <div class="table-wrapper"><table><thead><tr><th>Protocolo</th><th>Título</th><th>Solicitante</th><th>Centro de Custo</th><th>Prioridade</th><th>Status</th><th>Data</th></tr></thead><tbody id="tickets-tb"></tbody></table></div>
-    <div style="padding:0.75rem 1rem;font-size:0.8rem;color:var(--ink3);" id="tcount"></div>
-  </div>
 
-  <!-- FEEDBACKS -->
-  <div class="page" id="page-feedbacks">
-    <div class="topbar"><div class="page-title">Feedbacks</div></div>
-    <div class="feedback-list" id="feedback-list"></div>
-  </div>
-
-</main>
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modal-ov" onclick="closeM(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <div>
-        <div style="font-size:0.76rem;color:var(--purple);font-weight:700;margin-bottom:3px;" id="m-id"></div>
-        <div class="modal-title" id="m-title"></div>
-      </div>
-      <button class="modal-close" onclick="closeMd()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="detail-grid">
-        <div class="detail-item"><label>Solicitante</label><p id="d-nome"></p></div>
-        <div class="detail-item"><label>E-mail</label><p id="d-email" style="word-break:break-all;font-size:0.8rem;"></p></div>
-        <div class="detail-item"><label>Centro de Custo</label><p id="d-dept" style="font-size:0.82rem;"></p></div>
-        <div class="detail-item"><label>Unidade</label><p id="d-unidade"></p></div>
-        <div class="detail-item"><label>Categoria</label><p id="d-cat"></p></div>
-        <div class="detail-item"><label>Subcategoria</label><p id="d-sub"></p></div>
-        <div class="detail-item"><label>Prioridade</label><p id="d-prio"></p></div>
-        <div class="detail-item"><label>Data desejada</label><p id="d-data"></p></div>
-        <div class="detail-item" id="d-plat-row" style="display:none;grid-column:1/-1;"><label>Plataformas</label><p id="d-plat"></p></div>
-      </div>
-      <div class="modal-section">Descrição</div>
-      <div class="detail-desc" id="d-desc"></div>
-      <div class="modal-section">Atualizar status</div>
-      <div class="status-btns" id="status-btns"></div>
-      <div class="modal-section">Adicionar comentário</div>
-      <div class="comment-box">
-        <textarea id="cmt-text" placeholder="Atualizações, observações, próximos passos..."></textarea>
-        <button class="comment-save" onclick="saveCmt()">Salvar comentário</button>
-      </div>
-      <div class="modal-section" style="margin-top:1.2rem;">Histórico</div>
-      <div class="history-list" id="hist-list"></div>
+    <div class="success-screen" id="success-screen">
+      <div class="success-icon">✅</div>
+      <h2>Chamado aberto!</h2>
+      <p>Seu protocolo é</p>
+      <span class="ticket-number" id="ticket-num">#LOG-0000</span>
+      <p>Nossa equipe analisará em breve.</p>
+      <button class="btn-new" onclick="resetForm()">Abrir novo chamado</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCczKnSawfHiAPuMjY2L80ww_wtBMJJY30",
+    authDomain: "facilities-logcomex.firebaseapp.com",
+    projectId: "facilities-logcomex",
+    storageBucket: "facilities-logcomex.firebasestorage.app",
+    messagingSenderId: "957812645576",
+    appId: "1:957812645576:web:80c88475cc904106d20ffd"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const ADMINS = ['christian.bertolino@logcomex.com','joao.faria@logcomex.com','henrique.silva@logcomex.com'];
+  const DEFAULT_PASS = 'Logcomex@2024';
+
+  onAuthStateChanged(auth, async (user) => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (user) {
+      const isAdmin = ADMINS.includes(user.email);
+      if (isAdmin) {
+        // Check Firestore if admin already changed password
+        const flagRef = doc(db, 'admin_flags', user.uid);
+        const flagSnap = await getDoc(flagRef);
+        const passChanged = flagSnap.exists() && flagSnap.data().passwordChanged === true;
+        if (!passChanged) {
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('change-pass-screen').style.display = 'flex';
+          document.getElementById('app').style.display = 'none';
+          return;
+        }
+      }
+      showApp(user, isAdmin);
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('change-pass-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
+
+  function showApp(user, isAdmin) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('change-pass-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const name = user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    document.getElementById('header-user').textContent = name;
+    document.getElementById('nome').value = name;
+    document.getElementById('email').value = user.email;
+    const wrap = document.getElementById('admin-link-wrap');
+    wrap.innerHTML = '';
+    if (isAdmin) {
+      wrap.innerHTML = '<a href="admin.html" class="header-btn admin-btn">Painel Admin →</a>';
+    }
+  }
+
+  window.doLogin = async () => {
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const pass = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+
+    if (!email.endsWith('@logcomex.com')) {
+      errEl.textContent = 'Apenas e-mails @logcomex.com têm acesso.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      // Try to login first
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch(e) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+        // User doesn't exist — create automatically for @logcomex.com
+        try {
+          await createUserWithEmailAndPassword(auth, email, pass);
+        } catch(e2) {
+          errEl.textContent = 'Erro ao criar conta. Verifique o e-mail e tente novamente.';
+          errEl.style.display = 'block';
+        }
+      } else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        errEl.textContent = 'Senha incorreta.';
+        errEl.style.display = 'block';
+      } else {
+        errEl.textContent = 'E-mail ou senha incorretos.';
+        errEl.style.display = 'block';
+      }
+    }
+  };
+
+  window.doChangePass = async () => {
+    const newPass = document.getElementById('new-pass').value;
+    const confirmPass = document.getElementById('confirm-pass').value;
+    const errEl = document.getElementById('change-pass-error');
+    errEl.style.display = 'none';
+    if (newPass.length < 8) { errEl.textContent = 'A senha deve ter pelo menos 8 caracteres.'; errEl.style.display = 'block'; return; }
+    if (newPass === DEFAULT_PASS) { errEl.textContent = 'Você não pode usar a senha padrão. Escolha uma senha pessoal.'; errEl.style.display = 'block'; return; }
+    if (newPass !== confirmPass) { errEl.textContent = 'As senhas não coincidem.'; errEl.style.display = 'block'; return; }
+    try {
+      const user = auth.currentUser;
+      await updatePassword(user, newPass);
+      // Save flag to Firestore so it persists across devices
+      await setDoc(doc(db, 'admin_flags', user.uid), { passwordChanged: true, email: user.email, changedAt: new Date().toISOString() });
+      showApp(user, true);
+    } catch(e) {
+      errEl.textContent = 'Erro ao atualizar senha. Tente fazer login novamente.';
+      errEl.style.display = 'block';
+    }
+  };
+
+  window.checkStrength = (pass) => {
+    const bar = document.getElementById('strength-bar');
+    let strength = 0;
+    if (pass.length >= 8) strength++;
+    if (/[A-Z]/.test(pass)) strength++;
+    if (/[0-9]/.test(pass)) strength++;
+    if (/[^A-Za-z0-9]/.test(pass)) strength++;
+    const colors = ['#ef4444','#f59e0b','#3b82f6','#12b76a'];
+    const widths = ['25%','50%','75%','100%'];
+    bar.style.background = colors[strength-1] || '#ef4444';
+    bar.style.width = strength > 0 ? widths[strength-1] : '0%';
+  };
+
+  window.doLogout = () => signOut(auth);
+
+  window.forgotPassword = async () => {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) { alert('Digite seu e-mail primeiro.'); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert('E-mail de redefinição enviado! Verifique sua caixa de entrada.');
+    } catch(e) { alert('Erro ao enviar e-mail. Verifique o endereço.'); }
+  };
+
+  let tc = parseInt(localStorage.getItem('lc_tc') || '1000');
+
+  window.submitTicket = async (e) => {
+    e.preventDefault();
+    const prio = document.querySelector('input[name="prioridade"]:checked');
+    if (!prio) { alert('Selecione uma prioridade.'); return; }
+    const cat = document.getElementById('categoria').value;
+    const needsAttach = ['infraestrutura','seguranca','brindes','plataformas'];
+    if (needsAttach.includes(cat) && !document.getElementById('anexo').files[0]) {
+      alert('Este tipo de chamado requer um anexo.'); return;
+    }
+    tc++;
+    localStorage.setItem('lc_tc', tc);
+    const id = 'LOG-' + String(tc).padStart(4,'0');
+    const plats = [...document.querySelectorAll('input[name="plataforma"]:checked')].map(i => i.value);
+    const user = auth.currentUser;
+    try {
+      await addDoc(collection(db, 'tickets'), {
+        id, nome: document.getElementById('nome').value, email: document.getElementById('email').value,
+        userId: user.uid, departamento: document.getElementById('departamento').value,
+        unidade: document.getElementById('unidade').value, categoria: cat,
+        subcategoria: document.getElementById('subcategoria').value,
+        titulo: document.getElementById('titulo').value, descricao: document.getElementById('descricao').value,
+        prioridade: prio.value, data_desejada: document.getElementById('data-desejada').value,
+        plataformas: plats.join(', '), status: 'Aberto', data_abertura: serverTimestamp(),
+        historico: [{ acao: 'Chamado aberto', data: new Date().toISOString(), usuario: document.getElementById('nome').value }]
+      });
+      document.getElementById('ticket-num').textContent = '#' + id;
+      document.getElementById('form-wrapper').style.display = 'none';
+      document.getElementById('category-grid').style.display = 'none';
+      document.getElementById('cat-label').style.display = 'none';
+      document.getElementById('success-screen').style.display = 'block';
+    } catch(err) { alert('Erro ao salvar chamado. Tente novamente.'); }
+  };
+
+  window.submitFeedback = async () => {
+    const texto = document.getElementById('fb-texto').value.trim();
+    if (!texto) { alert('Por favor, descreva seu feedback.'); return; }
+    const tipo = document.querySelector('input[name="fbt"]:checked');
+    const anon = document.getElementById('fb-anon').checked;
+    const user = auth.currentUser;
+    try {
+      await addDoc(collection(db, 'feedbacks'), {
+        tipo: tipo ? tipo.value : 'Geral', assunto: document.getElementById('fb-assunto').value,
+        texto, anon, nome: anon ? 'Anônimo' : user.email, userId: anon ? null : user.uid,
+        data: serverTimestamp()
+      });
+      document.getElementById('fb-form').style.display = 'none';
+      document.getElementById('fb-header').style.display = 'none';
+      document.getElementById('fb-success').style.display = 'block';
+    } catch(err) { alert('Erro ao enviar feedback. Tente novamente.'); }
+  };
+</script>
 
 <script>
-const USERS = {
-  'admin': { pass:'facilities2024', name:'Admin Facilities', av:'AD' },
-  'chefe': { pass:'chefe123', name:'Gestor', av:'GS' },
-  'colega': { pass:'colega123', name:'Colega', av:'CL' }
+const CATS = {
+  manutencao:    { icon:'🔧', title:'Manutenção', sub:'Elétrica, hidráulica, ar condicionado e similares', attach:false },
+  infraestrutura:{ icon:'🪑', title:'Infraestrutura', sub:'Móveis, equipamentos, espaço físico', attach:true, note:'Foto do problema obrigatória', lbl:'Foto do problema *' },
+  limpeza:       { icon:'🧹', title:'Limpeza e Conservação', sub:'Copa, banheiros, áreas externas e dedetização', attach:false },
+  seguranca:     { icon:'🔐', title:'Segurança e Acesso', sub:'Crachás, chaves, câmeras, visitantes e prestadores', attach:true, note:'Documento de aprovação (se aplicável)', lbl:'Documento de aprovação' },
+  brindes:       { icon:'🎁', title:'Gestão de Brindes', sub:'Solicitação, personalização, estoque e distribuição', attach:true, note:'Envie o briefing ou planilha com a solicitação', lbl:'Briefing / Planilha *' },
+  suprimentos:   { icon:'📦', title:'Suprimentos de Escritório', sub:'Papel, material, café, higiene', attach:false },
+  plataformas:   { icon:'📱', title:'Acesso a Plataformas', sub:'Uber e Onfly corporativo', attach:true, note:'Aprovação do gestor direto obrigatória', lbl:'Aprovação do gestor *' },
 };
-
-function login() {
-  const u = document.getElementById('lu').value.trim().toLowerCase();
-  const p = document.getElementById('lp').value;
-  if (USERS[u] && USERS[u].pass === p) {
-    localStorage.setItem('lc_auth', u);
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('uname').textContent = USERS[u].name;
-    document.getElementById('uav').textContent = USERS[u].av;
-    init();
-  } else { document.getElementById('lerr').style.display = 'block'; }
-}
-function logout() { localStorage.removeItem('lc_auth'); location.reload(); }
-function checkAuth() {
-  const u = localStorage.getItem('lc_auth');
-  if (u && USERS[u]) {
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('uname').textContent = USERS[u].name;
-    document.getElementById('uav').textContent = USERS[u].av;
-    init();
-  }
-}
-
-const CATLABELS = {
-  manutencao:'🔧 Manutenção', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza',
-  seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas'
+const SUBS = {
+  manutencao:['Elétrica','Hidráulica','Ar condicionado','Iluminação','Mobiliário quebrado','Outro'],
+  infraestrutura:['Mesa / Cadeira','Monitor / Teclado / Mouse','Telefone','Impressora','Locker / Armário','Sala de reunião','Outro'],
+  limpeza:['Limpeza geral','Copa / Cozinha','Banheiro','Área externa','Dedetização','Outro'],
+  seguranca:['Crachá de acesso','Chave / Cofre','CFTV / Câmera','Visitante / Prestador','Controle remoto','Outro'],
+  brindes:['Solicitação de brinde','Personalização','Estoque / Inventário','Distribuição','Outro'],
+  suprimentos:['Papel / Impressão','Material de escritório','Café / Copa','Higiene','Outro'],
+  plataformas:['Novo acesso','Reativar acesso','Alterar dados','Cancelar acesso','Outro'],
 };
-const SBADGE = {
-  'Aberto':'b-aberto','Em andamento':'b-andamento','Aguardando aprovação':'b-aprovacao','Concluído':'b-concluido','Cancelado':'b-cancelado'
-};
-
-function getT() { return JSON.parse(localStorage.getItem('lc_tickets') || '[]'); }
-function setT(t) { localStorage.setItem('lc_tickets', JSON.stringify(t)); }
-function getF() { return JSON.parse(localStorage.getItem('lc_feedbacks') || '[]'); }
-
-function fd(iso) { if (!iso) return '-'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-function fds(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('pt-BR'); }
-
-function init() {
-  updateMetrics(); renderRecent(); renderTable(); renderFeedbacks();
-  updateBadge();
-  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+function selectCat(el) {
+  document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  const cat = el.dataset.cat;
+  const cfg = CATS[cat];
+  document.getElementById('hdr-icon').textContent = cat==='gestao'?'💡':(cfg?cfg.icon:'📋');
+  document.getElementById('hdr-title').textContent = cat==='gestao'?'Gestão e Melhoria':(cfg?cfg.title:'Abrir chamado');
+  document.getElementById('hdr-sub').textContent = cat==='gestao'?'Críticas, sugestões, elogios e ideias':(cfg?cfg.sub:'');
+  document.getElementById('default-state').style.display='none';
+  document.getElementById('gestao-form').style.display=cat==='gestao'?'block':'none';
+  document.getElementById('ticket-form').style.display=cat!=='gestao'?'block':'none';
+  if(cat!=='gestao'){document.getElementById('categoria').value=cat;onCatChange(cat);}
 }
-
-function updateMetrics() {
-  const T = getT(); const now = new Date();
-  document.getElementById('m-to').textContent = T.length;
-  document.getElementById('m-ab').textContent = T.filter(t=>t.status==='Aberto').length;
-  document.getElementById('m-an').textContent = T.filter(t=>t.status==='Em andamento').length;
-  document.getElementById('m-co').textContent = T.filter(t=>{ if(t.status!=='Concluído') return false; const d=new Date(t.data_abertura); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); }).length;
-  document.getElementById('m-ur').textContent = T.filter(t=>t.prioridade==='Urgente'&&!['Concluído','Cancelado'].includes(t.status)).length;
+function onCatChange(forceCat) {
+  const cat=forceCat||document.getElementById('categoria').value;
+  if(!cat)return;
+  document.getElementById('categoria').value=cat;
+  document.querySelectorAll('.cat-card').forEach(c=>c.classList.toggle('selected',c.dataset.cat===cat));
+  const cfg=CATS[cat];
+  if(cfg&&!forceCat){document.getElementById('hdr-icon').textContent=cfg.icon;document.getElementById('hdr-title').textContent=cfg.title;document.getElementById('hdr-sub').textContent=cfg.sub;}
+  const sub=document.getElementById('subcategoria');
+  sub.innerHTML='<option value="">Selecione...</option>';
+  (SUBS[cat]||[]).forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sub.appendChild(o);});
+  document.getElementById('plat-section').style.display=cat==='plataformas'?'block':'none';
+  const aw=document.getElementById('attach-wrap');
+  if(cfg&&cfg.attach){aw.style.display='block';document.getElementById('attach-lbl').textContent=cfg.lbl;document.getElementById('attach-note').textContent=cfg.note||'';}
+  else{aw.style.display='none';}
 }
-
-function updateBadge() {
-  document.getElementById('badge-n').textContent = getT().filter(t=>t.status==='Aberto').length;
-  document.getElementById('badge-fb').textContent = getF().length;
+function onFile(input){document.getElementById('file-name').textContent=input.files[0]?'✓ '+input.files[0].name:'';}
+function resetForm(){
+  document.getElementById('ticket-form').reset();
+  document.getElementById('file-name').textContent='';
+  document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('plat-section').style.display='none';
+  document.getElementById('attach-wrap').style.display='none';
+  document.getElementById('gestao-form').style.display='none';
+  document.getElementById('ticket-form').style.display='none';
+  document.getElementById('default-state').style.display='block';
+  document.getElementById('form-wrapper').style.display='block';
+  document.getElementById('category-grid').style.display='grid';
+  document.getElementById('success-screen').style.display='none';
+  document.getElementById('cat-label').style.display='flex';
+  document.getElementById('hdr-icon').textContent='📋';
+  document.getElementById('hdr-title').textContent='Abrir chamado';
+  document.getElementById('hdr-sub').textContent='Selecione uma categoria acima para começar';
+  document.getElementById('fb-form').style.display='block';
+  document.getElementById('fb-header').style.display='flex';
+  document.getElementById('fb-success').style.display='none';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
-
-function row(t, showUser=true) {
-  return `<tr onclick="openT('${t.id}')">
-    <td><span class="tid">#${t.id}</span></td>
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--ink);">${t.titulo}</td>
-    ${showUser ? `<td>${t.nome}<div style="font-size:0.73rem;color:var(--ink3);">${t.departamento||''}</div></td>` : ''}
-    ${showUser ? `<td style="font-size:0.8rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${CATLABELS[t.categoria]||t.categoria}</td>` : `<td>${CATLABELS[t.categoria]||t.categoria}</td>`}
-    <td><span class="pb pb-${t.prioridade}">${t.prioridade}</span></td>
-    <td><span class="badge ${SBADGE[t.status]||''}">${t.status}</span></td>
-    <td style="white-space:nowrap;font-size:0.78rem;color:var(--ink3);">${fds(t.data_abertura)}</td>
-  </tr>`;
-}
-
-function renderRecent() {
-  const T = getT().slice(0,8);
-  const tb = document.getElementById('recent-tb');
-  tb.innerHTML = T.length ? T.map(t=>row(t,false)).join('') : '<tr><td colspan="6"><div class="empty-state"><div>📭</div>Nenhum chamado ainda. <a href="index.html" style="color:var(--purple);">Abra o primeiro →</a></div></td></tr>';
-}
-
-function renderTable() {
-  const s = document.getElementById('search').value.toLowerCase();
-  const st = document.getElementById('f-status').value;
-  const cat = document.getElementById('f-cat').value;
-  const prio = document.getElementById('f-prio').value;
-  let T = getT().filter(t => {
-    if (st && t.status !== st) return false;
-    if (cat && t.categoria !== cat) return false;
-    if (prio && t.prioridade !== prio && !(st === 'Urgente' && t.prioridade === 'Urgente')) return false;
-    if (prio && t.prioridade !== prio) return false;
-    if (s && !`${t.id} ${t.titulo} ${t.nome} ${t.email}`.toLowerCase().includes(s)) return false;
-    return true;
-  });
-  const tb = document.getElementById('tickets-tb');
-  const ct = document.getElementById('tcount');
-  tb.innerHTML = T.length ? T.map(t=>row(t,true)).join('') : '<tr><td colspan="7"><div class="empty-state"><div>🔍</div>Nenhum chamado encontrado</div></td></tr>';
-  ct.textContent = T.length ? `${T.length} chamado${T.length>1?'s':''} encontrado${T.length>1?'s':''}` : '';
-}
-
-function renderFeedbacks() {
-  const F = getF();
-  const el = document.getElementById('feedback-list');
-  if (!F.length) { el.innerHTML = '<div class="empty-state"><div>💡</div>Nenhum feedback ainda.</div>'; return; }
-  el.innerHTML = F.map(f => `
-    <div class="fb-card">
-      <div class="fb-card-header">
-        <span class="fb-type-badge fb-${f.tipo||'Geral'}">${f.tipo||'Geral'}</span>
-        ${f.assunto ? `<span class="fb-assunto">${f.assunto}</span>` : ''}
-        <span style="margin-left:auto;font-size:0.75rem;color:var(--ink3);">${fds(f.data)}</span>
-      </div>
-      <div class="fb-text">${f.texto}</div>
-      <div class="fb-meta">Por: <strong>${f.nome}</strong>${f.anon ? ' · <em>anônimo</em>' : ''}</div>
-    </div>
-  `).join('');
-}
-
-// MODAL
-let CUR = null;
-function openT(id) {
-  const T = getT(); const t = T.find(x=>x.id===id);
-  if (!t) return;
-  CUR = id;
-  document.getElementById('m-id').textContent = '#' + t.id;
-  document.getElementById('m-title').textContent = t.titulo;
-  document.getElementById('d-nome').textContent = t.nome;
-  document.getElementById('d-email').textContent = t.email;
-  document.getElementById('d-dept').textContent = t.departamento || '-';
-  document.getElementById('d-unidade').textContent = t.unidade || '-';
-  document.getElementById('d-cat').textContent = CATLABELS[t.categoria] || t.categoria;
-  document.getElementById('d-sub').textContent = t.subcategoria || '-';
-  document.getElementById('d-prio').innerHTML = `<span class="pb pb-${t.prioridade}">${t.prioridade}</span>`;
-  document.getElementById('d-data').textContent = t.data_desejada ? new Date(t.data_desejada).toLocaleDateString('pt-BR') : '-';
-  document.getElementById('d-desc').textContent = t.descricao;
-  const platRow = document.getElementById('d-plat-row');
-  if (t.plataformas) { platRow.style.display = 'block'; document.getElementById('d-plat').textContent = t.plataformas; } else { platRow.style.display = 'none'; }
-  const statuses = ['Aberto','Em andamento','Aguardando aprovação','Concluído','Cancelado'];
-  document.getElementById('status-btns').innerHTML = statuses.map(s => `<button class="status-btn ${t.status===s?'active-s':''}" onclick="updS('${s}')">${s}</button>`).join('');
-  renderHist(t.historico || []);
-  document.getElementById('cmt-text').value = '';
-  document.getElementById('modal-ov').classList.add('open');
-}
-
-function renderHist(h) {
-  const el = document.getElementById('hist-list');
-  if (!h.length) { el.innerHTML = '<p style="font-size:0.82rem;color:var(--ink3);">Sem histórico ainda.</p>'; return; }
-  el.innerHTML = [...h].reverse().map(x => `<div class="history-item"><div class="history-dot"></div><div><div class="history-action">${x.acao}</div><div class="history-meta">${fd(x.data)}${x.usuario?' · '+x.usuario:''}</div></div></div>`).join('');
-}
-
-function updS(s) {
-  const T = getT(); const i = T.findIndex(t=>t.id===CUR);
-  if (i<0) return;
-  const old = T[i].status;
-  if (old===s) return;
-  T[i].status = s;
-  T[i].historico = T[i].historico || [];
-  T[i].historico.push({ acao:`Status: ${old} → ${s}`, data: new Date().toISOString(), usuario: localStorage.getItem('lc_auth') });
-  setT(T);
-  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active-s', b.textContent===s));
-  updateMetrics(); updateBadge(); renderTable(); renderRecent();
-  toast('Status atualizado: ' + s);
-}
-
-function saveCmt() {
-  const txt = document.getElementById('cmt-text').value.trim();
-  if (!txt) return;
-  const T = getT(); const i = T.findIndex(t=>t.id===CUR);
-  if (i<0) return;
-  T[i].historico = T[i].historico || [];
-  T[i].historico.push({ acao:'💬 ' + txt, data: new Date().toISOString(), usuario: localStorage.getItem('lc_auth') });
-  setT(T);
-  renderHist(T[i].historico);
-  document.getElementById('cmt-text').value = '';
-  toast('Comentário salvo!');
-}
-
-function closeM(e) { if (e.target===document.getElementById('modal-ov')) closeMd(); }
-function closeMd() { document.getElementById('modal-ov').classList.remove('open'); }
-
-function nav(page, el) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
-  if (el) el.classList.add('active');
-  if (page==='chamados') renderTable();
-  if (page==='dashboard') { updateMetrics(); renderRecent(); }
-  if (page==='feedbacks') renderFeedbacks();
-}
-
-function qs(s) {
-  if (s==='Urgente') { document.getElementById('f-prio').value='Urgente'; document.getElementById('f-status').value=''; }
-  else { document.getElementById('f-status').value=s; document.getElementById('f-prio').value=''; }
-  renderTable();
-}
-
-function exportCSV() {
-  const T = getT();
-  const h = ['Protocolo','Nome','Email','Centro de Custo','Unidade','Categoria','Subcategoria','Prioridade','Status','Plataformas','Titulo','Descricao','Data abertura','Data desejada'];
-  const rows = T.map(t => [t.id,t.nome,t.email,t.departamento,t.unidade,CATLABELS[t.categoria]||t.categoria,t.subcategoria,t.prioridade,t.status,t.plataformas||'',`"${(t.titulo||'').replace(/"/g,'""')}"`,`"${(t.descricao||'').replace(/"/g,'""')}"`,fd(t.data_abertura),t.data_desejada||'']);
-  const csv = [h,...rows].map(r=>r.join(';')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download = 'facilities_logcomex_'+new Date().toISOString().split('T')[0]+'.csv';
-  a.click();
-  toast('CSV exportado!');
-}
-
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
-}
-
-// Seed demo
-function seed() {
-  if (getT().length > 0) return;
-  const demos = [
-    { id:'LOG-1001', nome:'Ana Souza', email:'ana@logcomex.com', departamento:'CS GROWTH', unidade:'Sede Curitiba', categoria:'manutencao', subcategoria:'Ar condicionado', titulo:'Ar condicionado não liga na sala 3', descricao:'O ar condicionado da sala 3 parou de funcionar desde segunda-feira. Está insuportável para trabalhar.', prioridade:'Alta', status:'Aberto', data_abertura: new Date(Date.now()-86400000*2).toISOString(), data_desejada:'', plataformas:'', historico:[] },
-    { id:'LOG-1002', nome:'Carlos Lima', email:'carlos@logcomex.com', departamento:'TECH GROWTH', unidade:'Sede Curitiba', categoria:'plataformas', subcategoria:'Novo acesso', titulo:'Solicitação de acesso ao Uber corporativo', descricao:'Preciso de acesso ao Uber para viagens a clientes. Aprovação do gestor anexada.', prioridade:'Média', status:'Em andamento', data_abertura: new Date(Date.now()-86400000).toISOString(), data_desejada:'', plataformas:'Uber', historico:[{acao:'Chamado aberto',data:new Date(Date.now()-86400000).toISOString(),usuario:'carlos'},{acao:'Status: Aberto → Em andamento',data:new Date(Date.now()-3600000).toISOString(),usuario:'admin'}] },
-    { id:'LOG-1003', nome:'Mariana Costa', email:'mariana@logcomex.com', departamento:'RH CORPORATE', unidade:'Sede Curitiba', categoria:'brindes', subcategoria:'Solicitação de brinde', titulo:'Kits onboarding julho — 15 unidades', descricao:'Precisamos de 15 kits para o onboarding de 15/07. Inclui caneca, caderno e camiseta. Briefing em anexo.', prioridade:'Baixa', status:'Aguardando aprovação', data_abertura: new Date(Date.now()-86400000*5).toISOString(), data_desejada:'2024-07-10', plataformas:'', historico:[] },
-    { id:'LOG-1004', nome:'João Ferreira', email:'joao@logcomex.com', departamento:'FINANCEIRO CORPORATE', unidade:'Sede Curitiba', categoria:'suprimentos', subcategoria:'Papel / Impressão', titulo:'Falta papel na impressora do financeiro', descricao:'Impressora do financeiro sem papel há 2 dias.', prioridade:'Média', status:'Concluído', data_abertura: new Date(Date.now()-86400000*7).toISOString(), data_desejada:'', plataformas:'', historico:[{acao:'Chamado aberto',data:new Date(Date.now()-86400000*7).toISOString(),usuario:'joao'},{acao:'Status: Aberto → Concluído',data:new Date(Date.now()-86400000*6).toISOString(),usuario:'admin'}] },
-  ];
-  setT(demos);
-  localStorage.setItem('lc_tc','1004');
-}
-
-seed();
-checkAuth();
+document.getElementById('data-desejada').min=new Date().toISOString().split('T')[0];
 </script>
 </body>
 </html>
