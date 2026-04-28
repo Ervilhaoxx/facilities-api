@@ -1,1 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Facilities LogComex</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple: #6613D0; --purple-dark: #4e0fa0; --purple-light: #f3eaff; --purple-mid: #c9a0ff;
+    --orange: #FE8F1C; --black: #0B0D19;
+    --ink: #1a1d2e; --ink2: #4a4d60; --ink3: #8e91a8;
+    --surface: #ffffff; --surface2: #f8f7fc; --surface3: #eeeaf8;
+    --border: rgba(102,19,208,0.1);
+    --success: #12b76a; --success-bg: #e8f8ef;
+    --warning: #d97706; --warning-bg: #fffbeb;
+    --danger: #ef4444; --danger-bg: #fef2f2;
+    --info: #0ea5e9; --info-bg: #e0f2fe;
+    --radius: 12px; --radius-sm: 8px; --sidebar: 240px;
+  }
+  html, body { height: 100%; }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--surface2); color: var(--ink); display: flex; min-height: 100vh; }
+  .loading-screen { position: fixed; inset: 0; background: var(--black); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(102,19,208,0.3); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .unauth-screen { position: fixed; inset: 0; background: var(--black); display: none; align-items: center; justify-content: center; z-index: 998; flex-direction: column; gap: 1rem; text-align: center; padding: 2rem; }
+  .unauth-screen h2 { color: #fff; font-size: 1.5rem; font-weight: 700; }
+  .unauth-screen p { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
+  .btn-back { background: var(--purple); color: #fff; border: none; padding: 12px 28px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 0.5rem; }
 
+  /* SIDEBAR */
+  .sidebar { width: var(--sidebar); background: var(--black); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 1.5rem 1rem; z-index: 50; }
+  .sb-logo { display: flex; align-items: center; gap: 10px; padding: 0 0.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 1.2rem; }
+  .sb-logo-mark { width: 30px; height: 30px; background: var(--purple); border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .sb-logo-mark::before { content: ''; position: absolute; width: 10px; height: 10px; background: var(--orange); border-radius: 50%; top: 2px; right: 2px; }
+  .sb-logo-mark::after { content: 'L'; position: absolute; bottom: 2px; left: 6px; color: #fff; font-size: 12px; font-weight: 700; }
+  .sb-logo-text { font-weight: 700; font-size: 0.9rem; color: #fff; letter-spacing: -0.02em; }
+  .sb-logo-sub { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 1px; }
+  .sb-nav { flex: 1; }
+  .sb-section { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 0 0.5rem; margin: 1.2rem 0 0.5rem; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: var(--radius-sm); color: rgba(255,255,255,0.45); font-size: 0.87rem; cursor: pointer; transition: all 0.15s; text-decoration: none; font-weight: 500; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+  .nav-item.active { background: rgba(102,19,208,0.25); color: var(--purple-mid); }
+  .nav-badge { margin-left: auto; background: var(--orange); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 100px; min-width: 20px; text-align: center; }
+  .sb-footer { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 1rem; }
+  .user-info { display: flex; align-items: center; gap: 10px; padding: 8px 10px; }
+  .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(102,19,208,0.3); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--purple-mid); border: 1px solid rgba(102,19,208,0.4); }
+  .user-name { font-size: 0.83rem; font-weight: 600; color: rgba(255,255,255,0.7); }
+  .user-role { font-size: 0.7rem; color: rgba(255,255,255,0.28); }
+  .logout-btn { width: 100%; margin-top: 8px; padding: 8px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: rgba(255,255,255,0.35); font-size: 0.82rem; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
+  .logout-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.65); }
+
+  /* MAIN */
+  .main { margin-left: var(--sidebar); flex: 1; padding: 2rem; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem; }
+  .page-title { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.04em; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .btn { padding: 9px 18px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+  .btn-primary { background: var(--purple); color: #fff; border: none; box-shadow: 0 3px 10px rgba(102,19,208,0.25); }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-secondary { background: var(--surface); color: var(--ink2); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--purple-light); }
+
+  /* DASHBOARD METRICS */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; position: relative; overflow: hidden; }
+  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 2px 2px 0 0; }
+  .metric-card.purple::before { background: var(--purple); }
+  .metric-card.orange::before { background: var(--orange); }
+  .metric-card.green::before { background: var(--success); }
+  .metric-card.red::before { background: var(--danger); }
+  .metric-card.gray::before { background: var(--ink3); }
+  .metric-card.blue::before { background: var(--info); }
+  .metric-label { font-size: 0.72rem; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.5rem; }
+  .metric-value { font-weight: 700; font-size: 2rem; letter-spacing: -0.05em; line-height: 1; margin-bottom: 0.3rem; }
+  .metric-sub { font-size: 0.75rem; color: var(--ink3); }
+  .metric-trend { font-size: 0.75rem; font-weight: 600; margin-top: 4px; }
+  .trend-up { color: var(--danger); }
+  .trend-down { color: var(--success); }
+
+  /* CHARTS GRID */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  .charts-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 900px) { .charts-grid, .charts-grid.three { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+  .chart-title { font-weight: 700; font-size: 0.9rem; color: var(--ink); margin-bottom: 0.3rem; letter-spacing: -0.01em; }
+  .chart-sub { font-size: 0.75rem; color: var(--ink3); margin-bottom: 1.2rem; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* SLA METER */
+  .sla-ring { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; }
+  .sla-value { font-weight: 700; font-size: 2.5rem; letter-spacing: -0.05em; color: var(--purple); }
+  .sla-label { font-size: 0.82rem; color: var(--ink3); margin-top: 4px; }
+  .sla-bars { width: 100%; margin-top: 1rem; display: flex; flex-direction: column; gap: 8px; }
+  .sla-bar-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
+  .sla-bar-label { width: 80px; color: var(--ink3); font-weight: 500; flex-shrink: 0; }
+  .sla-bar-track { flex: 1; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+  .sla-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .sla-bar-count { width: 24px; text-align: right; color: var(--ink2); font-weight: 600; }
+
+  /* KANBAN */
+  .kanban-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 1rem; }
+  @media (max-width: 1000px) { .kanban-board { grid-template-columns: repeat(3, 280px); } }
+  .kanban-col { background: var(--surface2); border-radius: var(--radius); padding: 1rem; min-height: 400px; }
+  .kanban-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; }
+  .kanban-col-title { font-weight: 700; font-size: 0.82rem; color: var(--ink2); letter-spacing: -0.01em; display: flex; align-items: center; gap: 7px; }
+  .kanban-col-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .kanban-col-count { background: var(--surface3); color: var(--ink3); font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
+  .kanban-cards { display: flex; flex-direction: column; gap: 8px; }
+  .kanban-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem; cursor: pointer; transition: all 0.15s; position: relative; }
+  .kanban-card:hover { box-shadow: 0 4px 16px rgba(102,19,208,0.12); transform: translateY(-1px); border-color: rgba(102,19,208,0.2); }
+  .kanban-card-id { font-size: 0.7rem; font-weight: 700; color: var(--purple); margin-bottom: 4px; }
+  .kanban-card-title { font-size: 0.83rem; font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 6px; }
+  .kanban-card-meta { font-size: 0.72rem; color: var(--ink3); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .kanban-prio { padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
+  .kp-Baixa { background: var(--success-bg); color: var(--success); }
+  .kp-Média { background: var(--warning-bg); color: var(--warning); }
+  .kp-Alta { background: #fff4e5; color: #e45c10; }
+  .kp-Urgente { background: var(--danger-bg); color: var(--danger); }
+  .kanban-empty { text-align: center; padding: 2rem 1rem; color: var(--ink3); font-size: 0.8rem; opacity: 0.6; }
+
+  /* TABLE */
+  .filters-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  .fi-input { padding: 8px 12px; border: 1.5px solid var(--surface3); border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.84rem; color: var(--ink); background: var(--surface2); outline: none; transition: border-color 0.15s; }
+  .fi-input:focus { border-color: var(--purple); }
+  .fi-input.wide { flex: 1; min-width: 180px; }
+  select.fi-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e91a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; appearance: none; }
+  .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  thead th { padding: 12px 14px; text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--purple-light); }
+  td { padding: 13px 14px; color: var(--ink2); vertical-align: middle; }
+  .tid { font-weight: 700; font-size: 0.78rem; color: var(--purple); }
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-size: 0.73rem; font-weight: 600; white-space: nowrap; }
+  .b-aberto { background: var(--info-bg); color: var(--info); }
+  .b-andamento { background: var(--warning-bg); color: var(--warning); }
+  .b-aprovacao { background: #f3e8ff; color: #9333ea; }
+  .b-concluido { background: var(--success-bg); color: var(--success); }
+  .b-cancelado { background: var(--surface3); color: var(--ink3); }
+  .pb { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.71rem; font-weight: 700; }
+  .pb-Baixa { background: var(--success-bg); color: var(--success); }
+  .pb-Média { background: var(--warning-bg); color: var(--warning); }
+  .pb-Alta { background: #fff4e5; color: #e45c10; }
+  .pb-Urgente { background: var(--danger-bg); color: var(--danger); }
+  .empty-state { text-align: center; padding: 3rem; color: var(--ink3); }
+  .empty-state div { font-size: 2.5rem; margin-bottom: 1rem; }
+
+  /* FEEDBACK */
+  .feedback-list { display: flex; flex-direction: column; gap: 12px; }
+  .fb-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+  .fb-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
+  .fb-type-badge { padding: 3px 10px; border-radius: 100px; font-size: 0.73rem; font-weight: 700; }
+  .fb-Crítica { background: var(--danger-bg); color: var(--danger); }
+  .fb-Sugestão { background: var(--info-bg); color: var(--info); }
+  .fb-Elogio { background: var(--success-bg); color: var(--success); }
+  .fb-Ideia { background: #f3e8ff; color: #9333ea; }
+  .fb-Processo { background: var(--warning-bg); color: var(--warning); }
+  .fb-Geral { background: var(--surface3); color: var(--ink3); }
+  .fb-text { font-size: 0.85rem; color: var(--ink2); line-height: 1.6; margin-bottom: 0.75rem; }
+  .fb-meta { font-size: 0.75rem; color: var(--ink3); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(11,13,25,0.5); z-index: 200; display: none; align-items: flex-start; justify-content: flex-end; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 18px; width: 500px; max-height: calc(100vh - 2rem); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .modal-header { padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .modal-title { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; line-height: 1.3; }
+  .modal-close { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--ink3); flex-shrink: 0; transition: all 0.15s; }
+  .modal-close:hover { background: var(--purple-light); color: var(--purple); }
+  .modal-body { padding: 1.5rem; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.2rem; }
+  .detail-item label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink3); display: block; margin-bottom: 3px; }
+  .detail-item p { font-size: 0.87rem; color: var(--ink2); }
+  .detail-desc { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.9rem; font-size: 0.86rem; color: var(--ink2); line-height: 1.6; margin-bottom: 1.2rem; white-space: pre-wrap; border: 1px solid var(--border); }
+  .modal-section { font-size: 0.7rem; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.7rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .status-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .status-btn { padding: 7px 13px; border-radius: 100px; border: 1.5px solid var(--surface3); font-size: 0.78rem; font-weight: 600; cursor: pointer; background: var(--surface2); color: var(--ink3); font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
+  .status-btn.active-s { background: var(--purple-light); color: var(--purple); border-color: var(--purple); }
+  .comment-box textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--surface3); border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 0.86rem; color: var(--ink); background: var(--surface); resize: vertical; min-height: 75px; outline: none; }
+  .comment-box textarea:focus { border-color: var(--purple); }
+  .comment-save { margin-top: 8px; width: 100%; padding: 10px; background: var(--black); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.87rem; cursor: pointer; transition: background 0.15s; }
+  .comment-save:hover { background: var(--purple); }
+  .history-list { margin-top: 0.5rem; }
+  .history-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); margin-top: 6px; flex-shrink: 0; }
+  .history-action { font-size: 0.84rem; color: var(--ink2); }
+  .history-meta { font-size: 0.73rem; color: var(--ink3); margin-top: 2px; }
+
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--black); color: #fff; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 0.87rem; z-index: 999; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; border: 1px solid rgba(102,19,208,0.3); }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* RELATORIO IA */
+  .relatorio-shell { background: linear-gradient(135deg, #0B0D19 0%, #1a0a3a 100%); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
+  .relatorio-shell::before { content: ''; position: absolute; top: -80px; right: -60px; width: 300px; height: 300px; background: radial-gradient(ellipse, rgba(102,19,208,0.3) 0%, transparent 70%); pointer-events: none; }
+  .relatorio-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+  .relatorio-icon { width: 52px; height: 52px; background: rgba(102,19,208,0.3); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; border: 1px solid rgba(102,19,208,0.4); }
+  .relatorio-title { font-weight: 700; font-size: 1.2rem; color: #fff; letter-spacing: -0.03em; }
+  .relatorio-sub { font-size: 0.82rem; color: rgba(255,255,255,0.4); margin-top: 4px; line-height: 1.5; }
+  .relatorio-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; position: relative; z-index: 1; margin-bottom: 1.5rem; }
+  .relatorio-select { padding: 10px 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-sm); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; min-width: 140px; }
+  .relatorio-select option { background: #1a0a3a; color: #fff; }
+  .btn-gerar { padding: 11px 28px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.18s; display: flex; align-items: center; gap: 8px; }
+  .btn-gerar:hover { background: var(--purple-dark); }
+  .btn-gerar:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-exportar { padding: 11px 20px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.18s; display: none; }
+  .btn-exportar:hover { background: rgba(255,255,255,0.15); }
+  .relatorio-loading { display: none; text-align: center; padding: 2.5rem; position: relative; z-index: 1; }
+  .relatorio-loading .spinner { width: 40px; height: 40px; border: 3px solid rgba(102,19,208,0.3); border-top-color: var(--purple-mid); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  .relatorio-loading p { color: rgba(255,255,255,0.5); font-size: 0.88rem; }
+  .relatorio-loading .dots::after { content: ''; animation: dots 1.5s infinite; }
+  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+  .relatorio-output { display: none; background: var(--surface); border-radius: var(--radius); padding: 2rem; position: relative; z-index: 1; }
+  .relatorio-output h1, .relatorio-output h2, .relatorio-output h3 { font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem; margin-top: 1.5rem; color: var(--ink); }
+  .relatorio-output h1 { font-size: 1.3rem; color: var(--purple); border-bottom: 2px solid var(--purple-light); padding-bottom: 0.5rem; }
+  .relatorio-output h2 { font-size: 1.05rem; color: var(--ink); }
+  .relatorio-output p { font-size: 0.9rem; color: var(--ink2); line-height: 1.7; margin-bottom: 0.75rem; }
+  .relatorio-output ul, .relatorio-output ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+  .relatorio-output li { font-size: 0.9rem; color: var(--ink2); line-height: 1.7; margin-bottom: 4px; }
+  .relatorio-output strong { color: var(--ink); font-weight: 700; }
+  .relatorio-output hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  .relatorio-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+  .rstat { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 1rem; text-align: center; }
+  .rstat-value { font-weight: 700; font-size: 1.8rem; color: #fff; letter-spacing: -0.05em; }
+  .rstat-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 1rem; } .modal { width: 100%; } }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen"><div class="loading-spinner"></div></div>
+
+<div class="unauth-screen" id="unauth-screen">
+  <div style="font-size:3rem;">🔒</div>
+  <h2>Acesso restrito</h2>
+  <p>Apenas administradores de Facilities têm acesso a esta área.</p>
+  <button class="btn-back" onclick="window.location.href='index.html'">Voltar ao formulário</button>
+</div>
+
+<aside class="sidebar" id="sidebar" style="display:none;">
+  <div class="sb-logo">
+    <div class="sb-logo-mark"></div>
+    <div><div class="sb-logo-text">Facilities</div><div class="sb-logo-sub">LogComex · Admin</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Principal</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)"><span>📊</span> Dashboard</div>
+    <div class="nav-item" onclick="nav('kanban',this)"><span>🗂️</span> Kanban<span class="nav-badge" id="badge-n">0</span></div>
+    <div class="nav-item" onclick="nav('chamados',this)"><span>🎫</span> Chamados</div>
+    <div class="nav-item" onclick="nav('feedbacks',this)"><span>💡</span> Feedbacks<span class="nav-badge" id="badge-fb" style="background:var(--purple);">0</span></div>
+    <div class="nav-item" onclick="nav('relatorio',this)"><span>🤖</span> Relatório IA</div>
+    <div class="sb-section">Filtros rápidos</div>
+    <div class="nav-item" onclick="nav('chamados',this);qs('Aberto')"><span>🔵</span> Abertos</div>
+    <div class="nav-item" onclick="nav('chamados',this);qs('Em andamento')"><span>🟠</span> Em andamento</div>
+    <div class="nav-item" onclick="nav('chamados',this);qs('urgente')"><span>🔴</span> Urgentes</div>
+    <div class="sb-section">Links</div>
+    <a href="index.html" class="nav-item"><span>↗</span> Formulário público</a>
+  </nav>
+  <div class="sb-footer">
+    <div class="user-info">
+      <div class="user-avatar" id="uav">AD</div>
+      <div><div class="user-name" id="uname">Admin</div><div class="user-role">Facilities · Admin</div></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sair</button>
+  </div>
+</aside>
+
+<main class="main" id="main-content" style="display:none;">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="topbar">
+      <div><div class="page-title">Dashboard</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;" id="dash-date"></div></div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics-grid">
+      <div class="metric-card purple"><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
+      <div class="metric-card orange"><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
+      <div class="metric-card green"><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub">este mês</div></div>
+      <div class="metric-card red"><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
+      <div class="metric-card blue"><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
+      <div class="metric-card gray"><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Chamados por Categoria</div>
+        <div class="chart-sub">Distribuição total de chamados</div>
+        <div class="chart-wrap"><canvas id="chart-cat"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Chamados por Status</div>
+        <div class="chart-sub">Visão geral do pipeline</div>
+        <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 2 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Evolução Mensal</div>
+        <div class="chart-sub">Chamados abertos nos últimos 6 meses</div>
+        <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">SLA por Prioridade</div>
+        <div class="chart-sub">Taxa de chamados concluídos dentro do prazo</div>
+        <div>
+          <div class="sla-bars" id="sla-bars"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 3 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Top Centros de Custo</div>
+        <div class="chart-sub">Quem mais abre chamados</div>
+        <div class="chart-wrap"><canvas id="chart-dept"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Chamados por Prioridade</div>
+        <div class="chart-sub">Distribuição de urgência</div>
+        <div class="chart-wrap"><canvas id="chart-prio"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KANBAN -->
+  <div class="page" id="page-kanban">
+    <div class="topbar">
+      <div><div class="page-title">Kanban</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;">Visualização de chamados por status</div></div>
+      <div class="topbar-actions"><a href="index.html" class="btn btn-primary">+ Novo chamado</a></div>
+    </div>
+    <div class="kanban-board" id="kanban-board">
+      <div class="kanban-col" id="col-aberto">
+        <div class="kanban-col-header"><div class="kanban-col-title"><span class="kanban-col-dot" style="background:var(--info)"></span>Aberto</div><span class="kanban-col-count" id="cnt-aberto">0</span></div>
+        <div class="kanban-cards" id="cards-aberto"></div>
+      </div>
+      <div class="kanban-col" id="col-andamento">
+        <div class="kanban-col-header"><div class="kanban-col-title"><span class="kanban-col-dot" style="background:var(--warning)"></span>Em andamento</div><span class="kanban-col-count" id="cnt-andamento">0</span></div>
+        <div class="kanban-cards" id="cards-andamento"></div>
+      </div>
+      <div class="kanban-col" id="col-aprovacao">
+        <div class="kanban-col-header"><div class="kanban-col-title"><span class="kanban-col-dot" style="background:#9333ea"></span>Aguardando</div><span class="kanban-col-count" id="cnt-aprovacao">0</span></div>
+        <div class="kanban-cards" id="cards-aprovacao"></div>
+      </div>
+      <div class="kanban-col" id="col-concluido">
+        <div class="kanban-col-header"><div class="kanban-col-title"><span class="kanban-col-dot" style="background:var(--success)"></span>Concluído</div><span class="kanban-col-count" id="cnt-concluido">0</span></div>
+        <div class="kanban-cards" id="cards-concluido"></div>
+      </div>
+      <div class="kanban-col" id="col-cancelado">
+        <div class="kanban-col-header"><div class="kanban-col-title"><span class="kanban-col-dot" style="background:var(--ink3)"></span>Cancelado</div><span class="kanban-col-count" id="cnt-cancelado">0</span></div>
+        <div class="kanban-cards" id="cards-cancelado"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAMADOS -->
+  <div class="page" id="page-chamados">
+    <div class="topbar">
+      <div class="page-title">Chamados</div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <input type="text" class="fi-input wide" id="search" placeholder="🔍 Buscar por título, nome, protocolo..." oninput="renderTable()">
+      <select class="fi-input" id="f-status" onchange="renderTable()">
+        <option value="">Todos os status</option>
+        <option>Aberto</option><option>Em andamento</option><option>Aguardando aprovação</option><option>Concluído</option><option>Cancelado</option>
+      </select>
+      <select class="fi-input" id="f-cat" onchange="renderTable()">
+        <option value="">Todas categorias</option>
+        <option value="manutencao">Manutenção</option><option value="infraestrutura">Infraestrutura</option>
+        <option value="limpeza">Limpeza</option><option value="seguranca">Segurança</option>
+        <option value="brindes">Brindes</option><option value="suprimentos">Suprimentos</option><option value="plataformas">Plataformas</option>
+      </select>
+      <select class="fi-input" id="f-prio" onchange="renderTable()">
+        <option value="">Todas prioridades</option>
+        <option>Baixa</option><option>Média</option><option>Alta</option><option>Urgente</option>
+      </select>
+    </div>
+    <div class="table-wrapper"><table><thead><tr><th>Protocolo</th><th>Título</th><th>Solicitante</th><th>Centro de Custo</th><th>Prioridade</th><th>Status</th><th>Data</th></tr></thead><tbody id="tickets-tb"></tbody></table></div>
+    <div style="padding:0.75rem 1rem;font-size:0.8rem;color:var(--ink3);" id="tcount"></div>
+  </div>
+
+  <!-- FEEDBACKS -->
+  <div class="page" id="page-feedbacks">
+    <div class="topbar"><div class="page-title">Feedbacks</div></div>
+    <div class="feedback-list" id="feedback-list"></div>
+  </div>
+
+  <!-- RELATÓRIO IA -->
+  <div class="page" id="page-relatorio">
+    <div class="topbar">
+      <div><div class="page-title">Relatório IA</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;">Gerado automaticamente com inteligência artificial</div></div>
+    </div>
+
+    <div class="relatorio-shell">
+      <div class="relatorio-header">
+        <div class="relatorio-icon">🤖</div>
+        <div>
+          <div class="relatorio-title">Relatório Mensal de SLA</div>
+          <div class="relatorio-sub">Selecione o mês e clique em Gerar. A IA analisa todos os chamados e cria um relatório executivo completo com análise de SLA, tendências e recomendações.</div>
+        </div>
+      </div>
+
+      <div class="relatorio-controls">
+        <select class="relatorio-select" id="rel-mes">
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+          <option value="3">Março</option><option value="4">Abril</option>
+          <option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option>
+          <option value="9">Setembro</option><option value="10">Outubro</option>
+          <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+        <select class="relatorio-select" id="rel-ano">
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+          <option value="2026" selected>2026</option>
+        </select>
+        <button class="btn-gerar" id="btn-gerar" onclick="gerarRelatorio()">
+          ✨ Gerar relatório
+        </button>
+        <button class="btn-exportar" id="btn-exportar" onclick="exportarRelatorio()">
+          ⬇ Exportar PDF
+        </button>
+      </div>
+
+      <div class="relatorio-stats" id="relatorio-stats" style="display:none;">
+        <div class="rstat"><div class="rstat-value" id="rs-total">0</div><div class="rstat-label">Total</div></div>
+        <div class="rstat"><div class="rstat-value" id="rs-concluidos">0</div><div class="rstat-label">Concluídos</div></div>
+        <div class="rstat"><div class="rstat-value" id="rs-abertos">0</div><div class="rstat-label">Abertos</div></div>
+        <div class="rstat"><div class="rstat-value" id="rs-urgentes">0</div><div class="rstat-label">Urgentes</div></div>
+        <div class="rstat"><div class="rstat-value" id="rs-sla" style="color:var(--purple-mid);">0%</div><div class="rstat-label">SLA</div></div>
+      </div>
+
+      <div class="relatorio-loading" id="relatorio-loading">
+        <div class="spinner"></div>
+        <p>Analisando dados<span class="dots"></span></p>
+        <p style="font-size:0.78rem;margin-top:4px;opacity:0.6;">A IA está processando os chamados do mês selecionado</p>
+      </div>
+
+      <div class="relatorio-output" id="relatorio-output"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-ov" onclick="closeM(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:0.76rem;color:var(--purple);font-weight:700;margin-bottom:3px;" id="m-id"></div>
+        <div class="modal-title" id="m-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeMd()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item"><label>Solicitante</label><p id="d-nome"></p></div>
+        <div class="detail-item"><label>E-mail</label><p id="d-email" style="word-break:break-all;font-size:0.8rem;"></p></div>
+        <div class="detail-item"><label>Centro de Custo</label><p id="d-dept" style="font-size:0.82rem;"></p></div>
+        <div class="detail-item"><label>Unidade</label><p id="d-unidade"></p></div>
+        <div class="detail-item"><label>Categoria</label><p id="d-cat"></p></div>
+        <div class="detail-item"><label>Subcategoria</label><p id="d-sub"></p></div>
+        <div class="detail-item"><label>Prioridade</label><p id="d-prio"></p></div>
+        <div class="detail-item"><label>Data desejada</label><p id="d-data"></p></div>
+        <div class="detail-item" id="d-plat-row" style="display:none;grid-column:1/-1;"><label>Plataformas</label><p id="d-plat"></p></div>
+      </div>
+      <div class="modal-section">Descrição</div>
+      <div class="detail-desc" id="d-desc"></div>
+      <div class="modal-section">Atualizar status</div>
+      <div class="status-btns" id="status-btns"></div>
+      <div class="modal-section">Adicionar comentário</div>
+      <div class="comment-box">
+        <textarea id="cmt-text" placeholder="Atualizações, observações, próximos passos..."></textarea>
+        <button class="comment-save" onclick="saveCmt()">Salvar comentário</button>
+      </div>
+      <div class="modal-section" style="margin-top:1.2rem;">Histórico</div>
+      <div class="history-list" id="hist-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, doc, updateDoc, orderBy, query, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCczKnSawfHiAPuMjY2L80ww_wtBMJJY30",
+    authDomain: "facilities-logcomex.firebaseapp.com",
+    projectId: "facilities-logcomex",
+    storageBucket: "facilities-logcomex.firebasestorage.app",
+    messagingSenderId: "957812645576",
+    appId: "1:957812645576:web:80c88475cc904106d20ffd"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const ADMINS = ['christian.bertolino@logcomex.com','joao.faria@logcomex.com','henrique.silva@logcomex.com'];
+
+  let allTickets = [];
+  let allFeedbacks = [];
+  let currentDocId = null;
+  let charts = {};
+
+  const CATLABELS = {
+    manutencao:'🔧 Manutenção', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza',
+    seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas'
+  };
+  const SBADGE = {
+    'Aberto':'b-aberto','Em andamento':'b-andamento','Aguardando aprovação':'b-aprovacao','Concluído':'b-concluido','Cancelado':'b-cancelado'
+  };
+
+  function fds(ts) { if(!ts)return'-'; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('pt-BR'); }
+  function fd(ts) { if(!ts)return'-'; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+
+  onAuthStateChanged(auth, async (user) => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (!user || !ADMINS.includes(user.email)) {
+      document.getElementById('unauth-screen').style.display = 'flex';
+      return;
+    }
+    document.getElementById('sidebar').style.display = 'flex';
+    document.getElementById('main-content').style.display = 'block';
+    const name = user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    document.getElementById('uname').textContent = name;
+    document.getElementById('uav').textContent = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('dash-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+    const tq = query(collection(db, 'tickets'), orderBy('data_abertura', 'desc'));
+    onSnapshot(tq, (snap) => {
+      allTickets = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      updateMetrics(); renderTable(); renderKanban(); updateBadge(); updateCharts();
+    });
+
+    const fq = query(collection(db, 'feedbacks'), orderBy('data', 'desc'));
+    onSnapshot(fq, (snap) => {
+      allFeedbacks = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      renderFeedbacks();
+      document.getElementById('badge-fb').textContent = allFeedbacks.length;
+    });
+
+    window.doLogout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+    window.updS = async (s) => {
+      if (!currentDocId) return;
+      const t = allTickets.find(x => x._docId === currentDocId);
+      if (!t || t.status === s) return;
+      const hist = [...(t.historico || [])];
+      hist.push({ acao: `Status: ${t.status} → ${s}`, data: new Date().toISOString(), usuario: user.email });
+      await updateDoc(doc(db, 'tickets', currentDocId), { status: s, historico: hist });
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active-s', b.textContent === s));
+      showToast('Status atualizado: ' + s);
+    };
+
+    window.saveCmt = async () => {
+      const txt = document.getElementById('cmt-text').value.trim();
+      if (!txt || !currentDocId) return;
+      const t = allTickets.find(x => x._docId === currentDocId);
+      const hist = [...(t?.historico || [])];
+      hist.push({ acao: '💬 ' + txt, data: new Date().toISOString(), usuario: user.email });
+      await updateDoc(doc(db, 'tickets', currentDocId), { historico: hist });
+      document.getElementById('cmt-text').value = '';
+      renderHist(hist);
+      showToast('Comentário salvo!');
+    };
+  });
+
+  function updateMetrics() {
+    const now = new Date();
+    const total = allTickets.length;
+    const concluidos = allTickets.filter(t => t.status === 'Concluído').length;
+    document.getElementById('m-to').textContent = total;
+    document.getElementById('m-ab').textContent = allTickets.filter(t=>t.status==='Aberto').length;
+    document.getElementById('m-an').textContent = allTickets.filter(t=>t.status==='Em andamento').length;
+    document.getElementById('m-co').textContent = allTickets.filter(t=>{
+      if(t.status!=='Concluído')return false;
+      const d=t.data_abertura?.toDate?t.data_abertura.toDate():new Date(t.data_abertura||0);
+      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    }).length;
+    document.getElementById('m-ur').textContent = allTickets.filter(t=>t.prioridade==='Urgente'&&!['Concluído','Cancelado'].includes(t.status)).length;
+    const sla = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+    document.getElementById('m-sla').textContent = sla + '%';
+  }
+
+  function updateBadge() {
+    document.getElementById('badge-n').textContent = allTickets.filter(t=>t.status==='Aberto').length;
+  }
+
+  function updateCharts() {
+    // Category chart
+    const catCounts = {};
+    allTickets.forEach(t => { catCounts[t.categoria] = (catCounts[t.categoria]||0)+1; });
+    const catLabels = Object.keys(catCounts).map(k => (CATLABELS[k]||k).replace(/[^\w\s]/g,'').trim());
+    const catData = Object.values(catCounts);
+
+    if (charts.cat) charts.cat.destroy();
+    const ctxCat = document.getElementById('chart-cat').getContext('2d');
+    charts.cat = new Chart(ctxCat, {
+      type: 'doughnut',
+      data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#6613D0','#FE8F1C','#12b76a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6'], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Space Grotesk', size: 11 }, padding: 12 } } } }
+    });
+
+    // Status chart
+    const statuses = ['Aberto','Em andamento','Aguardando aprovação','Concluído','Cancelado'];
+    const statusColors = ['#0ea5e9','#d97706','#9333ea','#12b76a','#8e91a8'];
+    const statusCounts = statuses.map(s => allTickets.filter(t=>t.status===s).length);
+    if (charts.status) charts.status.destroy();
+    const ctxStatus = document.getElementById('chart-status').getContext('2d');
+    charts.status = new Chart(ctxStatus, {
+      type: 'bar',
+      data: { labels: statuses, datasets: [{ data: statusCounts, backgroundColor: statusColors, borderRadius: 6, borderSkipped: false }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
+    });
+
+    // Monthly chart
+    const months = [];
+    const monthCounts = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i);
+      months.push(d.toLocaleString('pt-BR', { month: 'short' }));
+      monthCounts.push(allTickets.filter(t => {
+        const td = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura||0);
+        return td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear();
+      }).length);
+    }
+    if (charts.monthly) charts.monthly.destroy();
+    const ctxM = document.getElementById('chart-monthly').getContext('2d');
+    charts.monthly = new Chart(ctxM, {
+      type: 'line',
+      data: { labels: months, datasets: [{ data: monthCounts, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#6613D0', pointRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk' } }, grid: { display: false } } } }
+    });
+
+    // SLA bars
+    const prios = ['Urgente','Alta','Média','Baixa'];
+    const colors = ['#ef4444','#e45c10','#d97706','#12b76a'];
+    const slaBars = document.getElementById('sla-bars');
+    slaBars.innerHTML = prios.map((p, i) => {
+      const total = allTickets.filter(t=>t.prioridade===p).length;
+      const done = allTickets.filter(t=>t.prioridade===p&&t.status==='Concluído').length;
+      const pct = total > 0 ? Math.round((done/total)*100) : 0;
+      return `<div class="sla-bar-row">
+        <span class="sla-bar-label">${p}</span>
+        <div class="sla-bar-track"><div class="sla-bar-fill" style="width:${pct}%;background:${colors[i]};"></div></div>
+        <span class="sla-bar-count">${pct}%</span>
+      </div>`;
+    }).join('');
+
+    // Top departments
+    const deptCounts = {};
+    allTickets.forEach(t => { if(t.departamento) deptCounts[t.departamento]=(deptCounts[t.departamento]||0)+1; });
+    const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    if (charts.dept) charts.dept.destroy();
+    const ctxD = document.getElementById('chart-dept').getContext('2d');
+    charts.dept = new Chart(ctxD, {
+      type: 'bar',
+      data: { labels: sorted.map(x=>x[0].length>20?x[0].substring(0,18)+'…':x[0]), datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: 'rgba(102,19,208,0.7)', borderRadius: 6, borderSkipped: false }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk', size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
+    });
+
+    // Priority chart
+    const prioCounts = ['Baixa','Média','Alta','Urgente'].map(p => allTickets.filter(t=>t.prioridade===p).length);
+    if (charts.prio) charts.prio.destroy();
+    const ctxP = document.getElementById('chart-prio').getContext('2d');
+    charts.prio = new Chart(ctxP, {
+      type: 'doughnut',
+      data: { labels: ['Baixa','Média','Alta','Urgente'], datasets: [{ data: prioCounts, backgroundColor: ['#12b76a','#d97706','#e45c10','#ef4444'], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Space Grotesk', size: 11 }, padding: 12 } } } }
+    });
+  }
+
+  function renderKanban() {
+    const cols = { 'Aberto': 'aberto', 'Em andamento': 'andamento', 'Aguardando aprovação': 'aprovacao', 'Concluído': 'concluido', 'Cancelado': 'cancelado' };
+    Object.entries(cols).forEach(([status, key]) => {
+      const tickets = allTickets.filter(t => t.status === status);
+      document.getElementById('cnt-' + key).textContent = tickets.length;
+      const container = document.getElementById('cards-' + key);
+      if (!tickets.length) { container.innerHTML = '<div class="kanban-empty">Nenhum chamado</div>'; return; }
+      container.innerHTML = tickets.map(t => `
+        <div class="kanban-card" onclick="openT('${t._docId}')">
+          <div class="kanban-card-id">#${t.id}</div>
+          <div class="kanban-card-title">${t.titulo||''}</div>
+          <div class="kanban-card-meta">
+            <span class="kanban-prio kp-${t.prioridade}">${t.prioridade}</span>
+            <span>${(CATLABELS[t.categoria]||t.categoria||'').replace(/[^\w\s]/g,'').trim()}</span>
+            ${t.nome ? `<span>· ${t.nome.split(' ')[0]}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    });
+  }
+
+  window.renderTable = () => {
+    const s = document.getElementById('search').value.toLowerCase();
+    const st = document.getElementById('f-status').value;
+    const cat = document.getElementById('f-cat').value;
+    const prio = document.getElementById('f-prio').value;
+    let T = allTickets.filter(t => {
+      if (st && t.status !== st) return false;
+      if (cat && t.categoria !== cat) return false;
+      if (prio && t.prioridade !== prio) return false;
+      if (s && !`${t.id||''} ${t.titulo||''} ${t.nome||''} ${t.email||''}`.toLowerCase().includes(s)) return false;
+      return true;
+    });
+    const tb = document.getElementById('tickets-tb');
+    tb.innerHTML = T.length ? T.map(t => `<tr onclick="openT('${t._docId}')">
+      <td><span class="tid">#${t.id}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--ink);">${t.titulo||''}</td>
+      <td>${t.nome||''}<div style="font-size:0.73rem;color:var(--ink3);">${t.departamento||''}</div></td>
+      <td style="font-size:0.8rem;">${(CATLABELS[t.categoria]||t.categoria||'')}</td>
+      <td><span class="pb pb-${t.prioridade}">${t.prioridade||''}</span></td>
+      <td><span class="badge ${SBADGE[t.status]||''}">${t.status||''}</span></td>
+      <td style="white-space:nowrap;font-size:0.78rem;color:var(--ink3);">${fds(t.data_abertura)}</td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><div>🔍</div>Nenhum chamado encontrado</div></td></tr>';
+    document.getElementById('tcount').textContent = T.length ? `${T.length} chamado${T.length>1?'s':''} encontrado${T.length>1?'s':''}` : '';
+  };
+
+  window.renderFeedbacks = () => {
+    const el = document.getElementById('feedback-list');
+    el.innerHTML = allFeedbacks.length ? allFeedbacks.map(f => `
+      <div class="fb-card">
+        <div class="fb-card-header">
+          <span class="fb-type-badge fb-${f.tipo||'Geral'}">${f.tipo||'Geral'}</span>
+          ${f.assunto?`<span style="font-weight:600;font-size:0.88rem;">${f.assunto}</span>`:''}
+          <span style="margin-left:auto;font-size:0.75rem;color:var(--ink3);">${fds(f.data)}</span>
+        </div>
+        <div class="fb-text">${f.texto}</div>
+        <div class="fb-meta">Por: <strong>${f.nome||'Anônimo'}</strong></div>
+      </div>`).join('') : '<div class="empty-state"><div>💡</div>Nenhum feedback ainda.</div>';
+  };
+
+  window.openT = (docId) => {
+    const t = allTickets.find(x => x._docId === docId);
+    if (!t) return;
+    currentDocId = docId;
+    document.getElementById('m-id').textContent = '#' + t.id;
+    document.getElementById('m-title').textContent = t.titulo;
+    document.getElementById('d-nome').textContent = t.nome||'-';
+    document.getElementById('d-email').textContent = t.email||'-';
+    document.getElementById('d-dept').textContent = t.departamento||'-';
+    document.getElementById('d-unidade').textContent = t.unidade||'-';
+    document.getElementById('d-cat').textContent = CATLABELS[t.categoria]||t.categoria;
+    document.getElementById('d-sub').textContent = t.subcategoria||'-';
+    document.getElementById('d-prio').innerHTML = `<span class="pb pb-${t.prioridade}">${t.prioridade}</span>`;
+    document.getElementById('d-data').textContent = t.data_desejada||'-';
+    document.getElementById('d-desc').textContent = t.descricao;
+    const pr = document.getElementById('d-plat-row');
+    if (t.plataformas) { pr.style.display='block'; document.getElementById('d-plat').textContent=t.plataformas; } else { pr.style.display='none'; }
+    const statuses = ['Aberto','Em andamento','Aguardando aprovação','Concluído','Cancelado'];
+    document.getElementById('status-btns').innerHTML = statuses.map(s => `<button class="status-btn ${t.status===s?'active-s':''}" onclick="updS('${s}')">${s}</button>`).join('');
+    renderHist(t.historico||[]);
+    document.getElementById('cmt-text').value = '';
+    document.getElementById('modal-ov').classList.add('open');
+  };
+
+  window.renderHist = (h) => {
+    const el = document.getElementById('hist-list');
+    el.innerHTML = h.length ? [...h].reverse().map(x => `
+      <div class="history-item"><div class="history-dot"></div>
+      <div><div class="history-action">${x.acao}</div><div class="history-meta">${x.data?new Date(x.data).toLocaleString('pt-BR'):''}${x.usuario?' · '+x.usuario:''}</div></div></div>`).join('')
+      : '<p style="font-size:0.82rem;color:var(--ink3);">Sem histórico.</p>';
+  };
+
+  window.exportCSV = () => {
+    const h = ['Protocolo','Nome','Email','Centro de Custo','Unidade','Categoria','Subcategoria','Prioridade','Status','Plataformas','Titulo','Descricao','Data abertura','Data desejada'];
+    const rows = allTickets.map(t => [t.id,t.nome,t.email,t.departamento,t.unidade,CATLABELS[t.categoria]||t.categoria,t.subcategoria,t.prioridade,t.status,t.plataformas||'',`"${(t.titulo||'').replace(/"/g,'""')}"`,`"${(t.descricao||'').replace(/"/g,'""')}"`,fds(t.data_abertura),t.data_desejada||'']);
+    const csv = [h,...rows].map(r=>r.join(';')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+    a.download = 'facilities_logcomex_'+new Date().toISOString().split('T')[0]+'.csv';
+    a.click();
+    showToast('CSV exportado!');
+  };
+</script>
+
+<script>
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+
+async function gerarRelatorio() {
+  const mes = parseInt(document.getElementById('rel-mes').value);
+  const ano = parseInt(document.getElementById('rel-ano').value);
+
+  // Filter tickets by month/year
+  const filtered = allTickets.filter(t => {
+    const d = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura || 0);
+    return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+  });
+
+  const btn = document.getElementById('btn-gerar');
+  const loading = document.getElementById('relatorio-loading');
+  const output = document.getElementById('relatorio-output');
+  const stats = document.getElementById('relatorio-stats');
+  const exportBtn = document.getElementById('btn-exportar');
+
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+  loading.style.display = 'block';
+  output.style.display = 'none';
+  stats.style.display = 'none';
+  exportBtn.style.display = 'none';
+
+  try {
+    const res = await fetch('https://facilities-api.vercel.app/api/relatorio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickets: filtered, mes, ano })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao gerar relatório');
+
+    // Show stats
+    document.getElementById('rs-total').textContent = data.stats.total;
+    document.getElementById('rs-concluidos').textContent = data.stats.concluidos;
+    document.getElementById('rs-abertos').textContent = data.stats.abertos;
+    document.getElementById('rs-urgentes').textContent = data.stats.urgentes;
+    document.getElementById('rs-sla').textContent = data.stats.slaGeral + '%';
+    stats.style.display = 'grid';
+
+    // Render markdown to HTML
+    output.innerHTML = markdownToHtml(data.relatorio);
+    output.style.display = 'block';
+    exportBtn.style.display = 'inline-flex';
+
+    showToast('Relatório gerado com sucesso!');
+  } catch(err) {
+    output.innerHTML = `<div style="color:var(--danger);padding:1rem;background:var(--danger-bg);border-radius:8px;">❌ ${err.message}</div>`;
+    output.style.display = 'block';
+    showToast('Erro ao gerar relatório');
+  } finally {
+    loading.style.display = 'none';
+    btn.disabled = false;
+    btn.innerHTML = '✨ Gerar relatório';
+  }
+}
+
+function markdownToHtml(md) {
+  return md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[huli])/gm, '<p>')
+    .replace(/(?<![>])$/gm, '</p>')
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<[hul])/g, '$1')
+    .replace(/(<\/[hul][^>]*>)<\/p>/g, '$1');
+}
+
+function exportarRelatorio() {
+  const mes = document.getElementById('rel-mes').options[document.getElementById('rel-mes').selectedIndex].text;
+  const ano = document.getElementById('rel-ano').value;
+  const content = document.getElementById('relatorio-output').innerText;
+  const blob = new Blob([`RELATÓRIO MENSAL DE SLA - FACILITIES LOGCOMEX\n${mes.toUpperCase()} ${ano}\n\n${content}`], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `relatorio_facilities_${mes}_${ano}.txt`;
+  a.click();
+  showToast('Relatório exportado!');
+}
+function qs(s) {
+  if(s==='urgente'){document.getElementById('f-prio').value='Urgente';document.getElementById('f-status').value='';}
+  else{document.getElementById('f-status').value=s;document.getElementById('f-prio').value='';}
+  if(typeof renderTable==='function')renderTable();
+}
+function closeM(e){if(e.target===document.getElementById('modal-ov'))closeMd();}
+function closeMd(){document.getElementById('modal-ov').classList.remove('open');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+window.showToast=showToast;
+
+// Set current month as default
+document.getElementById('rel-mes').value = new Date().getMonth() + 1;
+</script>
+</body>
+</html>
