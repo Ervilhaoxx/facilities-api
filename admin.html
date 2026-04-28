@@ -810,11 +810,20 @@ async function gerarRelatorio() {
   const mes = parseInt(document.getElementById('rel-mes').value);
   const ano = parseInt(document.getElementById('rel-ano').value);
 
-  // Filter tickets by month/year
-  const filtered = allTickets.filter(t => {
+  // Filter tickets by month/year — if no tickets for month, use all tickets
+  let filtered = allTickets.filter(t => {
     const d = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura || 0);
     return d.getMonth() + 1 === mes && d.getFullYear() === ano;
   });
+
+  // If no tickets for selected month, use all available tickets
+  const usandoTodos = filtered.length === 0 && allTickets.length > 0;
+  if (usandoTodos) filtered = allTickets;
+
+  if (filtered.length === 0) {
+    showToast('Nenhum chamado encontrado para gerar relatório.');
+    return;
+  }
 
   const btn = document.getElementById('btn-gerar');
   const loading = document.getElementById('relatorio-loading');
