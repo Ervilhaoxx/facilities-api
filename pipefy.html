@@ -214,8 +214,8 @@
       <div class="chart-wrap tall"><canvas id="chart-mensal"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">SLA % por Mês</div>
-      <div class="chart-sub">Taxa de conclusão dentro do prazo vs meta 93%</div>
+      <div class="chart-title">SLA por Mês — Quantidade</div>
+      <div class="chart-sub">Solicitações dentro e fora do prazo por mês</div>
       <div class="chart-wrap tall"><canvas id="chart-sla-mensal"></canvas></div>
     </div>
   </div>
@@ -571,25 +571,27 @@ function renderChartSLAMensal(cards) {
   cards.filter(c => c.status === 'concluido' && c.dentroSLA !== null).forEach(c => {
     const d = new Date(c.created_at);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!meses[key]) meses[key] = { dentro: 0, total: 0 };
+    if (!meses[key]) meses[key] = { dentro: 0, fora: 0, total: 0 };
     meses[key].total++;
     if (c.dentroSLA) meses[key].dentro++;
+    else meses[key].fora++;
   });
   const labels = Object.keys(meses).sort();
   const labelsFmt = labels.map(k => { const [y,m]=k.split('-'); return new Date(y,m-1).toLocaleString('pt-BR',{month:'short',year:'2-digit'}); });
-  const slaData = labels.map(k => meses[k].total > 0 ? Math.round((meses[k].dentro / meses[k].total)*100) : 0);
 
   if (charts.slaMensal) charts.slaMensal.destroy();
   charts.slaMensal = new Chart(document.getElementById('chart-sla-mensal').getContext('2d'), {
-    type: 'line',
+    type: 'bar',
     data: { labels: labelsFmt, datasets: [
-      { label: 'SLA %', data: slaData, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.08)', tension: 0.4, fill: true, pointBackgroundColor: slaData.map(v => v >= META_SLA ? '#12b76a' : '#ef4444'), pointRadius: 5 },
-      { label: `Meta ${META_SLA}%`, data: labels.map(() => META_SLA), borderColor: '#FE8F1C', borderDash: [6,3], pointRadius: 0, borderWidth: 2 },
+      { label: 'Dentro do SLA', data: labels.map(k => meses[k].dentro), backgroundColor: '#12b76a', borderRadius: 4, borderSkipped: false },
+      { label: 'Fora do SLA',   data: labels.map(k => meses[k].fora),   backgroundColor: '#ef4444', borderRadius: 4, borderSkipped: false },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'top', labels: { font: { family: 'Space Grotesk', size: 11 }, padding: 12 } } },
-      scales: { y: { beginAtZero: false, min: 0, max: 105, ticks: { callback: v => v+'%', font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                x: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } }
+      scales: {
+        x: { stacked: true, ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+      }
     }
   });
 }
