@@ -1,4 +1,4 @@
-// API/notify-slack.js
+// api/notify-slack.js
 // Vercel Serverless Function - Notificação Slack ao concluir chamado
 
 export default async function handler(req, res) {
@@ -52,12 +52,12 @@ export default async function handler(req, res) {
     let dataFormatada = dataAbertura;
     if (dataAbertura) {
       try {
-        const d = dataAbertura.toDate ? dataAbertura.toDate() : new Date(dataAbertura);
+        const d = new Date(dataAbertura);
         dataFormatada = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       } catch {}
     }
 
-    // 4. Envia a mensagem DM com Block Kit
+    // 4. Envia DM com identidade visual Facilities LogComex
     const messageRes = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
@@ -66,6 +66,8 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         channel: channelId,
+        username: 'Facilities LogComex',
+        icon_emoji: ':white_check_mark:',
         text: `✅ Seu chamado *${ticketId}* foi concluído!`,
         blocks: [
           {
@@ -103,7 +105,7 @@ export default async function handler(req, res) {
             elements: [
               {
                 type: 'mrkdwn',
-                text: '🏢 *Facilities LogComex* • Caso tenha dúvidas, abra um novo chamado em facilities-api.vercel.app',
+                text: '🏢 *Facilities LogComex* • Dúvidas? Abra um novo chamado em facilities-api.vercel.app',
               },
             ],
           },
