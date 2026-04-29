@@ -1,0 +1,131 @@
+// API/notify-slack.js
+// Vercel Serverless Function - Notificação Slack ao concluir chamado
+
+export default async function handler(req, res) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  if (!SLACK_BOT_TOKEN) return res.status(500).json({ error: 'SLACK_BOT_TOKEN não configurado' });
+
+  const { ticketId, titulo, categoria, solicitanteEmail, solicitanteNome, dataAbertura } = req.body;
+
+  if (!solicitanteEmail) return res.status(400).json({ error: 'solicitanteEmail obrigatório' });
+
+  try {
+    // 1. Busca o usuário Slack pelo e-mail
+    const userRes = await fetch(
+      `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(solicitanteEmail)}`,
+      { headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}` } }
+    );
+    const userData = await userRes.json();
+
+    if (!userData.ok) {
+      console.error('Slack lookupByEmail error:', userData.error);
+      return res.status(404).json({ error: `Usuário não encontrado no Slack: ${userData.error}` });
+    }
+
+    const slackUserId = userData.user.id;
+
+    // 2. Abre canal DM com o usuário
+    const dmRes = await fetch('https://slack.com/api/conversations.open', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ users: slackUserId }),
+    });
+    const dmData = await dmRes.json();
+
+    if (!dmData.ok) {
+      return res.status(500).json({ error: `Erro ao abrir DM: ${dmData.error}` });
+    }
+
+    const channelId = dmData.channel.id;
+
+    // 3. Formata data de abertura
+    let dataFormatada = dataAbertura;
+    if (dataAbertura) {
+      try {
+        const d = dataAbertura.toDate ? dataAbertura.toDate() : new Date(dataAbertura);
+        dataFormatada = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch {}
+    }
+
+    // 4. Envia a mensagem DM com Block Kit
+    const messageRes = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        text: `✅ Seu chamado *${ticketId}* foi concluído!`,
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '✅ Chamado Concluído!',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `Olá, *${solicitanteNome || solicitanteEmail.split('@')[0]}*! Seu chamado foi resolvido pela equipe de Facilities. 🎉`,
+            },
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'section',
+            fields: [
+              { type: 'mrkdwn', text: `*Chamado:*\n${ticketId}` },
+              { type: 'mrkdwn', text: `*Categoria:*\n${categoria || '—'}` },
+              { type: 'mrkdwn', text: `*Título:*\n${titulo || '—'}` },
+              { type: 'mrkdwn', text: `*Aberto em:*\n${dataFormatada || '—'}` },
+            ],
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: '🏢 *Facilities LogComex* • Caso tenha dúvidas, abra um novo chamado em facilities-api.vercel.app',
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const msgData = await messageRes.json();
+
+    if (!msgData.ok) {
+      return res.status(500).json({ error: `Erro ao enviar mensagem: ${msgData.error}` });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Notificação enviada para ${solicitanteEmail}`,
+      slackUserId,
+      ts: msgData.ts,
+    });
+
+  } catch (err) {
+    console.error('Erro notify-slack:', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
