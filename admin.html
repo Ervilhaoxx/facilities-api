@@ -539,7 +539,30 @@
 
   function fds(ts) { if(!ts)return'-'; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('pt-BR'); }
   function fd(ts) { if(!ts)return'-'; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-
+async function notificarSlackConcluido(ticket) {
+    try {
+      const dataAbertura = ticket.data_abertura
+        ? (ticket.data_abertura.toDate ? ticket.data_abertura.toDate().toISOString() : ticket.data_abertura)
+        : null;
+      const res = await fetch('/api/notify-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId:         ticket.id || ticket._docId,
+          titulo:           ticket.titulo || '',
+          categoria:        CATLABELS[ticket.categoria] || ticket.categoria || '',
+          solicitanteEmail: ticket.email || '',
+          solicitanteNome:  ticket.nome  || '',
+          dataAbertura
+        })
+      });
+      const data = await res.json();
+      if (data.success) console.log('✅ Slack notificado:', data.message);
+      else console.warn('⚠️ Slack não notificado:', data.error);
+    } catch (err) {
+      console.warn('⚠️ Erro ao notificar Slack:', err.message);
+    }
+  }
   onAuthStateChanged(auth, async (user) => {
     document.getElementById('loading-screen').style.display = 'none';
     if (!user || !ADMINS.includes(user.email)) {
@@ -568,7 +591,7 @@
 
     window.doLogout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
-    window.updS = async (s) => {
+window.updS = async (s) => {
       if (!currentDocId) return;
       const t = allTickets.find(x => x._docId === currentDocId);
       if (!t || t.status === s) return;
@@ -577,6 +600,7 @@
       await updateDoc(doc(db, 'tickets', currentDocId), { status: s, historico: hist });
       document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active-s', b.textContent === s));
       showToast('Status atualizado: ' + s);
+      if (s === 'Concluído') notificarSlackConcluido(t);
     };
 
     window.saveCmt = async () => {
