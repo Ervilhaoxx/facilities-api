@@ -578,12 +578,14 @@ function renderChartSLAMensal(cards) {
   const labels = Object.keys(meses).sort();
   const labelsFmt = labels.map(k => { const [y,m]=k.split('-'); return new Date(y,m-1).toLocaleString('pt-BR',{month:'short',year:'2-digit'}); });
   const slaData = labels.map(k => meses[k].total > 0 ? Math.round((meses[k].dentro / meses[k].total)*100) : 0);
+  const foraData = labels.map(k => meses[k].total > 0 ? Math.round(((meses[k].total - meses[k].dentro) / meses[k].total)*100) : 0);
 
   if (charts.slaMensal) charts.slaMensal.destroy();
   charts.slaMensal = new Chart(document.getElementById('chart-sla-mensal').getContext('2d'), {
     type: 'line',
     data: { labels: labelsFmt, datasets: [
-      { label: 'SLA %', data: slaData, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.08)', tension: 0.4, fill: true, pointBackgroundColor: slaData.map(v => v >= META_SLA ? '#12b76a' : '#ef4444'), pointRadius: 5 },
+      { label: 'Dentro do SLA %', data: slaData, borderColor: '#12b76a', backgroundColor: 'rgba(18,183,106,0.06)', tension: 0.4, fill: true, pointBackgroundColor: slaData.map(v => v >= META_SLA ? '#12b76a' : '#ef4444'), pointRadius: 5 },
+      { label: 'Fora do SLA %', data: foraData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.04)', tension: 0.4, fill: true, pointBackgroundColor: '#ef4444', pointRadius: 5 },
       { label: `Meta ${META_SLA}%`, data: labels.map(() => META_SLA), borderColor: '#FE8F1C', borderDash: [6,3], pointRadius: 0, borderWidth: 2 },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
