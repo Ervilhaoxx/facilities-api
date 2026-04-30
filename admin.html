@@ -29,7 +29,10 @@
   .unauth-screen h2 { color: #fff; font-size: 1.5rem; font-weight: 700; }
   .unauth-screen p { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
   .btn-back { background: var(--purple); color: #fff; border: none; padding: 12px 28px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 0.5rem; }
-  .sidebar { width: var(--sidebar); background: var(--black); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 1.5rem 1rem; z-index: 50; }
+  .sidebar { width: var(--sidebar); background: var(--black); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 1.5rem 1rem; z-index: 50; overflow-y: auto; overflow-x: hidden; }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
   .sb-logo { display: flex; align-items: center; gap: 10px; padding: 0 0.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 1.2rem; }
   .sb-logo-mark { width: 30px; height: 30px; background: var(--purple); border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
   .sb-logo-mark::before { content: ''; position: absolute; width: 10px; height: 10px; background: var(--orange); border-radius: 50%; top: 2px; right: 2px; }
@@ -238,6 +241,7 @@
     <div class="nav-item" onclick="nav('chamados',this);qs('urgente')"><span>🔴</span> Urgentes</div>
     <div class="sb-section">Histórico</div>
     <a href="pipefy.html" class="nav-item"><span>📈</span> Histórico Pipefy</a>
+    <div class="nav-item" onclick="syncPipefy()" id="btn-sync-pipefy" style="cursor:pointer;margin-top:4px;border:1px solid rgba(254,143,28,0.3);border-radius:8px;color:rgba(254,143,28,0.8);"><span>🔄</span> Sincronizar Pipefy</div>
     <div class="sb-section">Links</div>
     <a href="index.html" class="nav-item"><span>↗</span> Formulário público</a>
   </nav>
@@ -603,12 +607,12 @@
       const container = document.getElementById('cards-' + key);
       if (!tickets.length) { container.innerHTML = '<div class="kanban-empty">Nenhum chamado</div>'; return; }
       container.innerHTML = tickets.map(t => `
-        <div class="kanban-card" onclick="openT('${t._docId}')">
-          <div class="kanban-card-id">#${t.id}</div>
+        <div class="kanban-card" onclick="openT('${t._docId}')" style="${t.origem==='pipefy'?'border-left:3px solid #FE8F1C;':''}">
+          <div class="kanban-card-id">#${t.id} ${t.origem==='pipefy'?'<span style="background:rgba(254,143,28,0.15);color:#FE8F1C;font-size:0.65rem;padding:1px 5px;border-radius:4px;font-weight:700;">📌 Pipefy</span>':''}</div>
           <div class="kanban-card-title">${t.titulo||''}</div>
           <div class="kanban-card-meta">
             <span class="kanban-prio kp-${t.prioridade}">${t.prioridade}</span>
-            <span>${(CATLABELS[t.categoria]||t.categoria||'').replace(/[^\w\s]/g,'').trim()}</span>
+            <span>${(CATLABELS[t.categoria]||t.tipo_pipefy||t.categoria||'').replace(/[^\w\s]/g,'').trim()}</span>
             ${t.nome ? `<span>· ${t.nome.split(' ')[0]}</span>` : ''}
           </div>
         </div>`).join('');
@@ -785,6 +789,143 @@ function qs(s) {
 }
 function closeM(e){if(e.target===document.getElementById('modal-ov'))closeMd();}
 function closeMd(){document.getElementById('modal-ov').classList.remove('open');}
+// ── SYNC PIPEFY ──────────────────────────────────────────────
+const SLA_PRAZOS_SYNC = {
+  'Brinde': 5, 'Brinde Comercial': 5, 'Brinde Coleta': 5,
+  'Acessos': 2, 'Manutenção': 60,
+  'Suprimentos de escritório': 7, 'Emprestimo': 7,
+  'Recebimento de Encomendas': 30, 'Elogios ou Sugestões': 30,
+};
+const FASES_SYNC = [
+  { id: '326115156', nome: 'Solicitações concluídas', status: 'Concluído' },
+  { id: '326115157', nome: 'Solicitações Canceladas', status: 'Cancelado' },
+  { id: '333580091', nome: 'Recebimento de Encomendas', status: 'Em andamento' },
+  { id: '326115150', nome: 'Manutenção', status: 'Em andamento' },
+  { id: '326115158', nome: 'Acessos', status: 'Em andamento' },
+  { id: '326115151', nome: 'Suprimentos de escritório', status: 'Em andamento' },
+  { id: '326431237', nome: 'Brinde', status: 'Em andamento' },
+  { id: '328355056', nome: 'Brinde Comercial', status: 'Em andamento' },
+  { id: '326453470', nome: 'Brinde Coleta', status: 'Em andamento' },
+  { id: '326518140', nome: 'Elogios ou Sugestões', status: 'Em andamento' },
+  { id: '326115149', nome: 'Solicitações', status: 'Aberto' },
+  { id: '328355169', nome: 'Aprovação Gestor CS', status: 'Aguardando aprovação' },
+  { id: '327962192', nome: 'Emprestimo', status: 'Em andamento' },
+];
+const CAT_MAP_SYNC = {
+  'Brinde': 'brindes', 'Brinde Comercial': 'brindes', 'Brinde Coleta': 'brindes',
+  'Acessos': 'seguranca', 'Manutenção': 'manutencao',
+  'Suprimentos de escritório': 'suprimentos', 'Emprestimo': 'suprimentos',
+  'Recebimento de Encomendas': 'outros', 'Elogios ou Sugestões': 'outros',
+};
+
+async function syncPipefy() {
+  const btn = document.getElementById('btn-sync-pipefy');
+  btn.innerHTML = '<span>⏳</span> Sincronizando...';
+  btn.style.pointerEvents = 'none';
+
+  let totalImportados = 0;
+  let totalAtualizados = 0;
+
+  try {
+    for (let i = 0; i < FASES_SYNC.length; i++) {
+      const fase = FASES_SYNC[i];
+      btn.innerHTML = `<span>⏳</span> ${i+1}/${FASES_SYNC.length} fases...`;
+
+      let cursor = null;
+      let pagina = 0;
+
+      while (pagina < 100) {
+        const after = cursor ? `, after: "${cursor}"` : '';
+        const query = `{ phase(id: "${fase.id}") { cards(first: 50${after}) {
+          edges { node {
+            id title created_at finished_at
+            fields { name value }
+            phases_history { phase { name } duration }
+          } }
+          pageInfo { hasNextPage endCursor }
+        } } }`;
+
+        const resp = await fetch('/api/pipefy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const data = await resp.json();
+        const phase = data?.data?.phase;
+        if (!phase) break;
+
+        // Importa cards em batch para Firebase
+        const { setDoc, doc, getDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+        for (const edge of phase.cards.edges) {
+          const node = edge.node;
+          const tipo = node.fields?.find(f => f.name === 'Tipo de solicitação')?.value || fase.nome;
+          const descricao = node.fields?.find(f => f.name === 'Descrição do problema ou necessidade')?.value || '';
+
+          // SLA
+          let dentroSLA = null;
+          for (const ph of (node.phases_history || [])) {
+            const nome = ph.phase?.name;
+            if (SLA_PRAZOS_SYNC[nome] !== undefined && ph.duration != null) {
+              dentroSLA = (ph.duration / 86400) <= SLA_PRAZOS_SYNC[nome];
+              break;
+            }
+          }
+
+          const docId = `pipefy-${node.id}`;
+          const docRef = doc(db, 'tickets', docId);
+          const existing = await getDoc(docRef);
+
+          const cardData = {
+            id: docId,
+            titulo: node.title || 'Sem título',
+            descricao,
+            categoria: CAT_MAP_SYNC[tipo] || 'outros',
+            tipo_pipefy: tipo,
+            status: fase.status,
+            fase_pipefy: fase.nome,
+            prioridade: 'Média',
+            userId: 'pipefy-import',
+            userEmail: 'pipefy@logcomex.com',
+            origem: 'pipefy',
+            pipefy_id: node.id,
+            dentroSLA,
+            data_abertura: node.created_at ? new Date(node.created_at) : new Date(),
+            data_conclusao: node.finished_at ? new Date(node.finished_at) : null,
+            updatedAt: new Date(),
+          };
+
+          if (existing.exists()) {
+            await setDoc(docRef, { status: fase.status, fase_pipefy: fase.nome, updatedAt: new Date() }, { merge: true });
+            totalAtualizados++;
+          } else {
+            await setDoc(docRef, { ...cardData, createdAt: new Date() });
+            totalImportados++;
+          }
+        }
+
+        if (!phase.cards.pageInfo.hasNextPage) break;
+        cursor = phase.cards.pageInfo.endCursor;
+        pagina++;
+      }
+    }
+
+    btn.innerHTML = '<span>✅</span> Sincronizado!';
+    showToast(`✅ Pipefy sincronizado! ${totalImportados} importados, ${totalAtualizados} atualizados.`);
+    setTimeout(() => {
+      btn.innerHTML = '<span>🔄</span> Sincronizar Pipefy';
+      btn.style.pointerEvents = 'auto';
+    }, 3000);
+
+  } catch (err) {
+    console.error('Erro sync Pipefy:', err);
+    btn.innerHTML = '<span>❌</span> Erro — tente novamente';
+    btn.style.pointerEvents = 'auto';
+    showToast('❌ Erro ao sincronizar: ' + err.message);
+  }
+}
+window.syncPipefy = syncPipefy;
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 window.showToast=showToast;
 document.getElementById('rel-mes').value = new Date().getMonth() + 1;
