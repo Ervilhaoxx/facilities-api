@@ -465,6 +465,10 @@
     }
     document.getElementById('sidebar').style.display = 'flex';
     document.getElementById('main-content').style.display = 'block';
+    // Ativa scroll do mouse/touchpad no sidebar
+    const _sb = document.getElementById('sidebar');
+    const _sbInner = _sb.querySelector('.sidebar-inner');
+    _sb.addEventListener('wheel', (e) => { e.preventDefault(); _sbInner.scrollTop += e.deltaY; }, { passive: false });
     const name = user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
     document.getElementById('uname').textContent = name;
     document.getElementById('uav').textContent = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -958,16 +962,6 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 window.showToast=showToast;
 
 // Garante que o scroll do mouse/touchpad funciona no sidebar
-document.addEventListener('DOMContentLoaded', () => {
-  const sidebar = document.getElementById('sidebar');
-  const inner = sidebar?.querySelector('.sidebar-inner');
-  if (sidebar && inner) {
-    sidebar.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      inner.scrollTop += e.deltaY;
-    }, { passive: false });
-  }
-});
 document.getElementById('rel-mes').value = new Date().getMonth() + 1;
 </script>
 </body>
