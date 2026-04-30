@@ -410,6 +410,7 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  window.db = db;
   const ADMINS = ['christian.bertolino@logcomex.com','joao.faria@logcomex.com','henrique.silva@logcomex.com'];
 
   let allTickets = [];
@@ -881,7 +882,7 @@ async function syncPipefy() {
           }
 
           const docId = `pipefy-${node.id}`;
-          const docRef = doc(db, 'tickets', docId);
+          const docRef = doc(window.db, 'tickets', docId);
           const existing = await getDoc(docRef);
 
           const cardData = {
