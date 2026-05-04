@@ -212,6 +212,18 @@
   .rstat-value { font-weight: 700; font-size: 1.8rem; color: #fff; letter-spacing: -0.05em; }
   .rstat-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
   @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 1rem; } .modal { width: 100%; } }
+
+  /* SELETOR DE PERÍODO */
+  .periodo-bar { display: flex; align-items: center; gap: 10px; margin: 1rem 0 1.5rem; flex-wrap: wrap; }
+  .periodo-toggle { display: flex; background: var(--surface3); border-radius: 10px; padding: 3px; gap: 2px; }
+  .periodo-btn { padding: 6px 18px; border-radius: 8px; border: none; font-family: 'Space Grotesk', sans-serif; font-size: 0.83rem; font-weight: 600; cursor: pointer; background: transparent; color: var(--ink2); transition: all 0.18s; }
+  .periodo-btn.active { background: var(--surface); color: var(--purple); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .periodo-selects { display: flex; gap: 8px; align-items: center; }
+  .periodo-select { padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 0.83rem; color: var(--ink); background: var(--surface); cursor: pointer; outline: none; transition: border-color 0.18s; }
+  .periodo-select:focus { border-color: var(--purple); }
+  .periodo-label { font-size: 0.8rem; color: var(--ink3); font-weight: 500; }
+  .periodo-badge { background: var(--purple-light); color: var(--purple); font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 100px; border: 1px solid rgba(102,19,208,0.2); }
+
 </style>
 </head>
 <body>
@@ -486,7 +498,7 @@
     onSnapshot(tq, (snap) => {
       allTickets = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
       window.allTickets = allTickets;
-      updateMetrics(); renderTable(); renderKanban(); updateBadge(); updateCharts();
+      updateMetrics(); renderTable(); renderKanban(); updateBadge(); if(typeof initPeriodo==='function'){initPeriodo();}else{updateCharts();}
     });
 
     const fq = query(collection(db, 'feedbacks'), orderBy('data', 'desc'));
@@ -560,9 +572,10 @@
     document.getElementById('badge-n').textContent = allTickets.filter(t=>t.status==='Aberto').length;
   }
 
-  function updateCharts() {
+  function updateCharts(filteredTickets) {
+    const T = filteredTickets || allTickets;
     const catCounts = {};
-    allTickets.forEach(t => { catCounts[t.categoria] = (catCounts[t.categoria]||0)+1; });
+    T.forEach(t => { catCounts[t.categoria] = (catCounts[t.categoria]||0)+1; });
     const catLabels = Object.keys(catCounts).map(k => (CATLABELS[k]||k).replace(/[^\w\s]/g,'').trim());
     const catData = Object.values(catCounts);
     if (charts.cat) charts.cat.destroy();
@@ -577,7 +590,7 @@
     if (charts.status) charts.status.destroy();
     charts.status = new Chart(document.getElementById('chart-status').getContext('2d'), {
       type: 'bar',
-      data: { labels: statuses, datasets: [{ data: statuses.map(s => allTickets.filter(t=>t.status===s).length), backgroundColor: statusColors, borderRadius: 6, borderSkipped: false }] },
+      data: { labels: statuses, datasets: [{ data: statuses.map(s => T.filter(t=>t.status===s).length), backgroundColor: statusColors, borderRadius: 6, borderSkipped: false }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
     });
 
@@ -585,7 +598,7 @@
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
       months.push(d.toLocaleString('pt-BR', { month: 'short' }));
-      monthCounts.push(allTickets.filter(t => { const td = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura||0); return td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear(); }).length);
+      monthCounts.push(T.filter(t => { const td = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura||0); return td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear(); }).length);
     }
     if (charts.monthly) charts.monthly.destroy();
     charts.monthly = new Chart(document.getElementById('chart-monthly').getContext('2d'), {
@@ -596,14 +609,14 @@
 
     const prios = ['Urgente','Alta','Média','Baixa'], colors = ['#ef4444','#e45c10','#d97706','#12b76a'];
     document.getElementById('sla-bars').innerHTML = prios.map((p, i) => {
-      const total = allTickets.filter(t=>t.prioridade===p).length;
-      const done = allTickets.filter(t=>t.prioridade===p&&t.status==='Concluído').length;
+      const total = T.filter(t=>t.prioridade===p).length;
+      const done = T.filter(t=>t.prioridade===p&&t.status==='Concluído').length;
       const pct = total > 0 ? Math.round((done/total)*100) : 0;
       return `<div class="sla-bar-row"><span class="sla-bar-label">${p}</span><div class="sla-bar-track"><div class="sla-bar-fill" style="width:${pct}%;background:${colors[i]};"></div></div><span class="sla-bar-count">${pct}%</span></div>`;
     }).join('');
 
     const deptCounts = {};
-    allTickets.forEach(t => { if(t.departamento) deptCounts[t.departamento]=(deptCounts[t.departamento]||0)+1; });
+    T.forEach(t => { if(t.departamento) deptCounts[t.departamento]=(deptCounts[t.departamento]||0)+1; });
     const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
     if (charts.dept) charts.dept.destroy();
     charts.dept = new Chart(document.getElementById('chart-dept').getContext('2d'), {
@@ -615,7 +628,7 @@
     if (charts.prio) charts.prio.destroy();
     charts.prio = new Chart(document.getElementById('chart-prio').getContext('2d'), {
       type: 'doughnut',
-      data: { labels: ['Baixa','Média','Alta','Urgente'], datasets: [{ data: ['Baixa','Média','Alta','Urgente'].map(p => allTickets.filter(t=>t.prioridade===p).length), backgroundColor: ['#12b76a','#d97706','#e45c10','#ef4444'], borderWidth: 0 }] },
+      data: { labels: ['Baixa','Média','Alta','Urgente'], datasets: [{ data: ['Baixa','Média','Alta','Urgente'].map(p => T.filter(t=>t.prioridade===p).length), backgroundColor: ['#12b76a','#d97706','#e45c10','#ef4444'], borderWidth: 0 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Space Grotesk', size: 11 }, padding: 12 } } } }
     });
   }
@@ -970,6 +983,97 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 window.showToast=showToast;
 
 document.getElementById('rel-mes').value = new Date().getMonth() + 1;
+
+// ── SELETOR DE PERÍODO ──────────────────────────────────────────────
+let _periodoTipo = 'mes'; // 'mes' | 'ano' | 'todos'
+let _periodoMes = new Date().getMonth();
+let _periodoAno = new Date().getFullYear();
+
+function initPeriodo() {
+  const anos = [];
+  const anoAtual = new Date().getFullYear();
+  for (let a = anoAtual; a >= 2023; a--) anos.push(a);
+
+  // Popula selects de ano
+  ['sel-ano-mes','sel-ano'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = anos.map(a => `<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('');
+  });
+
+  // Seleciona mês atual
+  document.getElementById('sel-mes').value = _periodoMes;
+  document.getElementById('sel-ano').value = _periodoAno;
+  document.getElementById('sel-ano-mes').value = _periodoAno;
+
+  aplicarPeriodo();
+}
+
+function setPeriodoTipo(tipo) {
+  _periodoTipo = tipo;
+  document.getElementById('btn-periodo-mes').classList.toggle('active', tipo==='mes');
+  document.getElementById('btn-periodo-ano').classList.toggle('active', tipo==='ano');
+  document.getElementById('btn-periodo-todos').classList.toggle('active', tipo==='todos');
+  document.getElementById('selects-mes').style.display = tipo==='mes' ? 'flex' : 'none';
+  document.getElementById('selects-ano').style.display = tipo==='ano' ? 'flex' : 'none';
+  aplicarPeriodo();
+}
+
+function aplicarPeriodo() {
+  _periodoMes = parseInt(document.getElementById('sel-mes')?.value ?? new Date().getMonth());
+  _periodoAno = parseInt(document.getElementById('sel-ano-mes')?.value ?? new Date().getFullYear());
+  const anoSel = parseInt(document.getElementById('sel-ano')?.value ?? new Date().getFullYear());
+
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let badge = '';
+  let filtered = window.allTickets || [];
+
+  if (_periodoTipo === 'mes') {
+    filtered = filtered.filter(t => {
+      const d = t.data_abertura?.toDate ? t.data_abertura.toDate() : (t.data_abertura ? new Date(t.data_abertura) : null);
+      return d && d.getMonth() === _periodoMes && d.getFullYear() === _periodoAno;
+    });
+    badge = `${meses[_periodoMes]} ${_periodoAno}`;
+  } else if (_periodoTipo === 'ano') {
+    filtered = filtered.filter(t => {
+      const d = t.data_abertura?.toDate ? t.data_abertura.toDate() : (t.data_abertura ? new Date(t.data_abertura) : null);
+      return d && d.getFullYear() === anoSel;
+    });
+    _periodoAno = anoSel;
+    badge = `Ano ${anoSel}`;
+  } else {
+    badge = 'Todos os períodos';
+  }
+
+  document.getElementById('periodo-badge').textContent = `📊 ${filtered.length} chamados · ${badge}`;
+
+  // Rederiza dashboard com os dados filtrados
+  renderDashboardComFiltro(filtered);
+}
+
+function renderDashboardComFiltro(tickets) {
+  const ab = tickets.filter(t=>t.status==='Aberto').length;
+  const an = tickets.filter(t=>t.status==='Em andamento').length;
+  const co = tickets.filter(t=>t.status==='Concluído').length;
+  const ur = tickets.filter(t=>t.prioridade==='Urgente'&&t.status!=='Concluído'&&t.status!=='Cancelado').length;
+  const total = tickets.length;
+  const sla = total > 0 ? Math.round((co / total) * 100) : 0;
+
+  document.getElementById('m-ab').textContent = ab;
+  document.getElementById('m-an').textContent = an;
+  document.getElementById('m-co').textContent = co;
+  document.getElementById('m-ur').textContent = ur;
+  document.getElementById('m-to').textContent = total;
+  document.getElementById('m-sla').textContent = sla + '%';
+
+  // Atualiza gráficos se existirem
+  if (typeof updateCharts === 'function') updateCharts(tickets);
+}
+window.setPeriodoTipo = setPeriodoTipo;
+window.aplicarPeriodo = aplicarPeriodo;
+window.initPeriodo = initPeriodo;
+// ────────────────────────────────────────────────────────────────────
+
 </script>
 </body>
 </html>
