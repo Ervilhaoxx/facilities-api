@@ -284,6 +284,31 @@
         <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
       </div>
     </div>
+
+    <!-- SELETOR DE PERÍODO -->
+    <div class="periodo-bar" id="periodo-bar">
+      <div class="periodo-toggle">
+        <button class="periodo-btn active" id="btn-periodo-mes" onclick="setPeriodoTipo('mes')">📅 Mês</button>
+        <button class="periodo-btn" id="btn-periodo-ano" onclick="setPeriodoTipo('ano')">📆 Ano</button>
+        <button class="periodo-btn" id="btn-periodo-todos" onclick="setPeriodoTipo('todos')">🗂 Todos</button>
+      </div>
+      <div class="periodo-selects" id="selects-mes">
+        <select class="periodo-select" id="sel-mes" onchange="aplicarPeriodo()">
+          <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+          <option value="2">Março</option><option value="3">Abril</option>
+          <option value="4">Maio</option><option value="5">Junho</option>
+          <option value="6">Julho</option><option value="7">Agosto</option>
+          <option value="8">Setembro</option><option value="9">Outubro</option>
+          <option value="10">Novembro</option><option value="11">Dezembro</option>
+        </select>
+        <select class="periodo-select" id="sel-ano-mes" onchange="aplicarPeriodo()"></select>
+      </div>
+      <div class="periodo-selects" id="selects-ano" style="display:none;">
+        <select class="periodo-select" id="sel-ano" onchange="aplicarPeriodo()"></select>
+      </div>
+      <span class="periodo-badge" id="periodo-badge">Carregando...</span>
+    </div>
+
     <div class="metrics-grid">
       <div class="metric-card purple"><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
       <div class="metric-card orange"><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
