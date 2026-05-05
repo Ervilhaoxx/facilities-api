@@ -213,6 +213,21 @@
   .mc-Cancelado { background: var(--surface3); color: var(--ink3); }
   .mc-empty { text-align: center; padding: 3rem 1rem; color: var(--ink3); }
   .mc-empty div { font-size: 2rem; margin-bottom: 0.75rem; }
+
+  /* MISSÃO VISÃO VALORES */
+  .mvv-section { background: linear-gradient(135deg, #0B0D19 0%, #1a0a3a 100%); padding: 2.5rem 2rem; position: relative; overflow: hidden; }
+  .mvv-section::before { content: ''; position: absolute; top: -80px; right: -60px; width: 300px; height: 300px; background: radial-gradient(ellipse, rgba(102,19,208,0.25) 0%, transparent 70%); pointer-events: none; }
+  .mvv-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+  .mvv-eyebrow { font-size: 0.72rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 1.5rem; }
+  .mvv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 700px) { .mvv-grid { grid-template-columns: 1fr; } }
+  .mvv-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(102,19,208,0.25); border-radius: 14px; padding: 1.5rem; }
+  .mvv-card-icon { font-size: 1.5rem; margin-bottom: 0.6rem; }
+  .mvv-card-title { font-size: 0.72rem; font-weight: 700; color: var(--purple-mid); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.6rem; }
+  .mvv-card-text { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+  .mvv-valores-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
+  .mvv-valor-tag { background: rgba(102,19,208,0.2); border: 1px solid rgba(102,19,208,0.3); color: var(--purple-mid); font-size: 0.78rem; font-weight: 600; padding: 5px 14px; border-radius: 100px; }
+
 </style>
 </head>
 <body>
@@ -292,6 +307,36 @@
     <div class="hero-eyebrow"><span class="eyebrow-dot"></span> Central de Chamados</div>
     <h1>Como podemos<br><em>te ajudar hoje?</em></h1>
     <p>Selecione uma categoria e nossa equipe de facilities entra em ação.</p>
+  </div>
+
+  <div class="mvv-section">
+    <div class="mvv-inner">
+      <div class="mvv-eyebrow">⚡ Nossa identidade</div>
+      <div class="mvv-grid">
+        <div class="mvv-card">
+          <div class="mvv-card-icon">🎯</div>
+          <div class="mvv-card-title">Missão</div>
+          <div class="mvv-card-text">Garantir ambientes de trabalho seguros, eficientes e bem estruturados, que sustentem a operação e proporcionem a melhor experiência para os Loggers no dia a dia.</div>
+        </div>
+        <div class="mvv-card">
+          <div class="mvv-card-icon">🔭</div>
+          <div class="mvv-card-title">Visão</div>
+          <div class="mvv-card-text">Ser referência interna em eficiência operacional — invisível quando tudo funciona e indispensável quando mais importa.</div>
+        </div>
+        <div class="mvv-card" style="grid-column:1/-1">
+          <div class="mvv-card-icon">💎</div>
+          <div class="mvv-card-title">Valores</div>
+          <div class="mvv-valores-list">
+            <span class="mvv-valor-tag">🛡️ Segurança em primeiro lugar</span>
+            <span class="mvv-valor-tag">⚙️ Eficiência operacional</span>
+            <span class="mvv-valor-tag">❤️ Cuidado com os Loggers</span>
+            <span class="mvv-valor-tag">🌱 Sustentabilidade prática</span>
+            <span class="mvv-valor-tag">📈 Melhoria contínua</span>
+            <span class="mvv-valor-tag">🤝 Responsabilidade e senso de dono</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="content" id="main-content">
