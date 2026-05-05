@@ -308,11 +308,12 @@
       </div>
       <span class="periodo-badge" id="periodo-badge">Carregando...</span>
     </div>
+    <div id="periodo-desc" style="width:100%;font-size:0.78rem;color:var(--ink3);margin-top:-0.5rem;margin-bottom:0.5rem;"></div>
 
     <div class="metrics-grid">
       <div class="metric-card purple"><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
       <div class="metric-card orange"><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
-      <div class="metric-card green"><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub">este mês</div></div>
+      <div class="metric-card green"><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub" id="m-co-sub">no período</div></div>
       <div class="metric-card red"><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
       <div class="metric-card blue"><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
       <div class="metric-card gray"><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
@@ -577,23 +578,13 @@
   });
 
   function updateMetrics() {
-    const now = new Date();
-    const total = allTickets.length;
-    const concluidos = allTickets.filter(t => t.status === 'Concluído').length;
-    document.getElementById('m-to').textContent = total;
-    document.getElementById('m-ab').textContent = allTickets.filter(t=>t.status==='Aberto').length;
-    document.getElementById('m-an').textContent = allTickets.filter(t=>t.status==='Em andamento').length;
-    document.getElementById('m-co').textContent = allTickets.filter(t=>{
-      if(t.status!=='Concluído')return false;
-      const d=t.data_abertura?.toDate?t.data_abertura.toDate():new Date(t.data_abertura||0);
-      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
-    }).length;
-    document.getElementById('m-ur').textContent = allTickets.filter(t=>t.prioridade==='Urgente'&&!['Concluído','Cancelado'].includes(t.status)).length;
-    const sla = total > 0 ? Math.round((concluidos / total) * 100) : 0;
-    document.getElementById('m-sla').textContent = sla + '%';
+  if (typeof aplicarPeriodo === 'function' && window._periodoTipo) {
+    aplicarPeriodo();
+  } else {
+    renderDashboardComFiltro(allTickets);
   }
-
-  function updateBadge() {
+}
+function updateBadge() {
     document.getElementById('badge-n').textContent = allTickets.filter(t=>t.status==='Aberto').length;
   }
 
@@ -1083,17 +1074,31 @@ function renderDashboardComFiltro(tickets) {
   const ur = tickets.filter(t=>t.prioridade==='Urgente'&&t.status!=='Concluído'&&t.status!=='Cancelado').length;
   const total = tickets.length;
   const sla = total > 0 ? Math.round((co / total) * 100) : 0;
-
   document.getElementById('m-ab').textContent = ab;
   document.getElementById('m-an').textContent = an;
   document.getElementById('m-co').textContent = co;
   document.getElementById('m-ur').textContent = ur;
   document.getElementById('m-to').textContent = total;
   document.getElementById('m-sla').textContent = sla + '%';
-
-  // Atualiza gráficos se existirem
+  const subEl = document.getElementById('m-co-sub');
+  if (subEl) {
+    const tipo = window._periodoTipo||'todos';
+    const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    if(tipo==='mes') subEl.textContent=ms[window._periodoMes||0]+' '+(window._periodoAno||'');
+    else if(tipo==='ano') subEl.textContent='ano '+(window._periodoAno||'');
+    else subEl.textContent='todos os períodos';
+  }
+  const descEl = document.getElementById('periodo-desc');
+  if (descEl) {
+    const tipo = window._periodoTipo||'todos';
+    const ms=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    if(tipo==='mes') descEl.textContent='Chamados abertos em '+ms[window._periodoMes||0]+' de '+(window._periodoAno||'');
+    else if(tipo==='ano') descEl.textContent='Chamados abertos em '+(window._periodoAno||'');
+    else descEl.textContent='Exibindo todos os '+total+' chamados do sistema';
+  }
   if (typeof updateCharts === 'function') updateCharts(tickets);
 }
+
 window.setPeriodoTipo = setPeriodoTipo;
 window.aplicarPeriodo = aplicarPeriodo;
 window.initPeriodo = initPeriodo;
