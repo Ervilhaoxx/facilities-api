@@ -762,6 +762,7 @@ function updateBadge() {
     a.click();
     showToast('CSV exportado!');
   };
+  window.updateCharts = updateCharts;
 </script>
 
 <script>
@@ -1006,6 +1007,7 @@ let _periodoMes = new Date().getMonth();
 let _periodoAno = new Date().getFullYear();
 
 function initPeriodo() {
+  window._periodoTipo = 'mes';
   const anos = [];
   const anoAtual = new Date().getFullYear();
   for (let a = anoAtual; a >= 2023; a--) anos.push(a);
@@ -1027,6 +1029,7 @@ function initPeriodo() {
 
 function setPeriodoTipo(tipo) {
   _periodoTipo = tipo;
+  window._periodoTipo = tipo;
   document.getElementById('btn-periodo-mes').classList.toggle('active', tipo==='mes');
   document.getElementById('btn-periodo-ano').classList.toggle('active', tipo==='ano');
   document.getElementById('btn-periodo-todos').classList.toggle('active', tipo==='todos');
@@ -1036,6 +1039,7 @@ function setPeriodoTipo(tipo) {
 }
 
 function aplicarPeriodo() {
+  window._periodoTipo = _periodoTipo;
   _periodoMes = parseInt(document.getElementById('sel-mes')?.value ?? new Date().getMonth());
   _periodoAno = parseInt(document.getElementById('sel-ano-mes')?.value ?? new Date().getFullYear());
   const anoSel = parseInt(document.getElementById('sel-ano')?.value ?? new Date().getFullYear());
