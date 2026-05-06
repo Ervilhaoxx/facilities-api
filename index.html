@@ -596,6 +596,11 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  window.db = db;
+  window.auth = auth;
+  window._addDoc = addDoc;
+  window._collection = collection;
+  window._serverTimestamp = serverTimestamp;
   const ADMINS = ['christian.bertolino@logcomex.com','joao.faria@logcomex.com','henrique.silva@logcomex.com'];
   const DEFAULT_PASS = 'Logcomex@2024';
 
@@ -1084,10 +1089,12 @@ window.submitLogistica = async () => {
   tc++; localStorage.setItem('lc_tc', tc);
   const id = 'LOG-' + String(tc).padStart(4,'0');
   try {
-    const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await addDoc(collection(db, 'tickets'), {
+    const addDoc = window._addDoc;
+    const collection = window._collection;
+    const serverTimestamp = window._serverTimestamp;
+    await addDoc(collection(window.db, 'tickets'), {
       id, nome: document.getElementById('nome').value, email: document.getElementById('email').value,
-      userId: auth.currentUser?.uid, departamento: document.getElementById('departamento').value,
+      userId: window.auth?.currentUser?.uid, departamento: document.getElementById('departamento').value,
       unidade: document.getElementById('unidade').value, categoria: 'logistica',
       subcategoria: transp.value, titulo: 'Envio ' + document.getElementById('log-tipo-envio').value + ' via ' + transp.value,
       descricao: 'Item: ' + item + '\nDestinatário: ' + dest + '\nEndereço: ' + end,
