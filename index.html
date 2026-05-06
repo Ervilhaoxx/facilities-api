@@ -228,6 +228,23 @@
   .mvv-valores-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
   .mvv-valor-tag { background: rgba(102,19,208,0.2); border: 1px solid rgba(102,19,208,0.3); color: var(--purple-mid); font-size: 0.78rem; font-weight: 600; padding: 5px 14px; border-radius: 100px; }
 
+
+  /* LOGÍSTICA & ENVIOS */
+  .transp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.2rem; }
+  .transp-opt { display: none; }
+  .transp-label { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 1rem 0.5rem; border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; text-align: center; user-select: none; }
+  .transp-label:hover { border-color: var(--purple); background: var(--purple-light); }
+  .transp-opt:checked + .transp-label { border-color: var(--purple); background: var(--purple-light); }
+  .transp-label .t-icon { font-size: 2rem; }
+  .transp-label .t-nome { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+  .transp-label .t-prazo { font-size: 0.72rem; color: var(--ink3); background: var(--surface2); padding: 2px 8px; border-radius: 100px; margin-top: 2px; }
+  .transp-opt:checked + .transp-label .t-nome { color: var(--purple-dark); }
+  .transp-opt:checked + .transp-label .t-prazo { background: white; color: var(--purple); font-weight: 600; }
+  .tipo-envio-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .tipo-envio-btn { padding: 8px 18px; border-radius: 100px; border: 1.5px solid var(--border); font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; background: transparent; color: var(--ink2); }
+  .tipo-envio-btn.active { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); }
+  .sla-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--purple-light); color: var(--purple); font-size: 0.78rem; font-weight: 700; padding: 5px 14px; border-radius: 100px; border: 1px solid rgba(102,19,208,0.2); }
+
 </style>
 </head>
 <body>
@@ -365,6 +382,7 @@
       <div class="cat-card" data-cat="suprimentos" onclick="selectCat(this)"><span class="cat-icon">📦</span><span class="cat-name">Suprimentos</span></div>
       <div class="cat-card" data-cat="plataformas" onclick="selectCat(this)"><span class="cat-icon">📱</span><span class="cat-name">Acesso Plataformas</span><span class="cat-attach-dot">📎</span></div>
       <div class="cat-card" data-cat="gestao" onclick="selectCat(this)"><span class="cat-icon">💡</span><span class="cat-name">Gestão e Melhoria</span></div>
+      <div class="cat-card" data-cat="logistica" onclick="selectCat(this)"><span class="cat-icon">🚚</span><span class="cat-name">Logística &amp;<br>Envios</span><span class="cat-attach-dot">📎</span></div>
     </div>
 
     <div class="form-card" id="form-wrapper">
@@ -374,6 +392,41 @@
       </div>
       <div class="form-body">
         <div id="default-state"><div style="font-size:2.2rem;margin-bottom:0.7rem;">☝️</div><p>Selecione uma categoria acima para abrir seu chamado</p></div>
+
+        
+        <!-- FORM LOGÍSTICA & ENVIOS -->
+        <div id="logistica-form" class="conditional" style="display:none;">
+          <p class="fs-title gap">📦 Tipo de Envio</p>
+          <div class="tipo-envio-grid">
+            <button type="button" class="tipo-envio-btn active" onclick="setTipoEnvio('equipamento',this)">💻 Equipamento</button>
+            <button type="button" class="tipo-envio-btn" onclick="setTipoEnvio('kit',this)">📦 Kit Onboarding</button>
+          </div>
+          <input type="hidden" id="log-tipo-envio" value="equipamento">
+          <p class="fs-title gap">🚛 Transportadora *</p>
+          <div class="transp-grid">
+            <div><input type="radio" name="transportadora" id="transp-dhl" value="DHL" class="transp-opt" onchange="onTranspChange()"><label for="transp-dhl" class="transp-label"><span class="t-icon">✈️</span><span class="t-nome">DHL</span><span class="t-prazo">SLA: 2 dias úteis</span></label></div>
+            <div><input type="radio" name="transportadora" id="transp-correio" value="Correio" class="transp-opt" onchange="onTranspChange()"><label for="transp-correio" class="transp-label"><span class="t-icon">📮</span><span class="t-nome">Correio</span><span class="t-prazo">SLA: 7 dias úteis</span></label></div>
+            <div><input type="radio" name="transportadora" id="transp-uber" value="Uber Flash" class="transp-opt" onchange="onTranspChange()"><label for="transp-uber" class="transp-label"><span class="t-icon">🚗</span><span class="t-nome">Uber Flash</span><span class="t-prazo">SLA: Mesmo dia</span></label></div>
+          </div>
+          <div id="sla-msg" style="display:none;margin-top:-0.5rem;margin-bottom:1rem;"><span class="sla-badge">✅ <span id="sla-msg-text"></span></span></div>
+          <p class="fs-title gap">📍 Destinatário</p>
+          <div class="form-row gap">
+            <div class="field"><label>Nome do destinatário <span class="req">*</span></label><input type="text" id="log-destinatario" placeholder="Nome completo"></div>
+            <div class="field"><label>E-mail do destinatário</label><input type="email" id="log-email-dest" placeholder="email@logcomex.com"></div>
+          </div>
+          <div class="field gap"><label>Endereço completo <span class="req">*</span></label><input type="text" id="log-endereco" placeholder="Rua, número, bairro, cidade - CEP"></div>
+          <p class="fs-title gap">📋 Detalhes</p>
+          <div class="field gap"><label>O que será enviado? <span class="req">*</span></label><input type="text" id="log-item" placeholder="Ex: MacBook Air 13 (000-00220)..."></div>
+          <div class="form-row gap">
+            <div class="field"><label>Número de série / patrimônio</label><input type="text" id="log-serial" placeholder="Ex: 000-00220"></div>
+            <div class="field"><label>Data desejada para envio <span class="req">*</span></label><input type="date" id="log-data-envio"></div>
+          </div>
+          <div class="field gap"><label>Observações</label><textarea id="log-obs" rows="3" placeholder="Urgência, fragilidade, instruções especiais..."></textarea></div>
+          <div class="form-footer">
+            <p class="form-note">Você receberá um número de protocolo após o envio.</p>
+            <button type="button" class="btn-submit" onclick="submitLogistica()">Solicitar envio <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
 
         <div id="gestao-form" class="conditional">
           <div class="feedback-shell">
@@ -874,6 +927,7 @@ const CATS = {
   brindes:       { icon:'🎁', title:'Gestão de Brindes', sub:'Solicitação de brindes corporativos', attach:false },
   suprimentos:   { icon:'📦', title:'Suprimentos de Escritório', sub:'Papel, material, café, higiene', attach:false },
   plataformas:   { icon:'📱', title:'Acesso a Plataformas', sub:'Uber e Onfly corporativo', attach:true, note:'Aprovação do gestor direto obrigatória', lbl:'Aprovação do gestor *' },
+  logistica:     { icon:'🚚', title:'Logística & Envios', sub:'Envio de equipamentos e kits via DHL, Correio ou Uber Flash', attach:true, note:'Nota fiscal ou comprovante de envio', lbl:'Nota fiscal / comprovante' },
 };
 const SUBS = {
   manutencao:['Elétrica','Hidráulica','Ar condicionado','Iluminação','Mobiliário quebrado','Outro'],
@@ -883,6 +937,7 @@ const SUBS = {
   brindes:       [],
   suprimentos:   ['Papel / Impressão','Material de escritório','Café / Copa','Higiene','Outro'],
   plataformas:   ['Novo acesso','Reativar acesso','Alterar dados','Cancelar acesso','Outro'],
+  logistica:     ['DHL','Correio','Uber Flash'],
 };
 function selectCat(el) {
   document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('selected'));
@@ -894,8 +949,10 @@ function selectCat(el) {
   document.getElementById('hdr-sub').textContent = cat==='gestao'?'Críticas, sugestões, elogios e ideias':(cfg?cfg.sub:'');
   document.getElementById('default-state').style.display='none';
   document.getElementById('gestao-form').style.display=cat==='gestao'?'block':'none';
-  document.getElementById('ticket-form').style.display=cat!=='gestao'?'block':'none';
-  if(cat!=='gestao'){document.getElementById('categoria').value=cat;onCatChange(cat);}
+  document.getElementById('logistica-form').style.display=cat==='logistica'?'block':'none';
+  document.getElementById('ticket-form').style.display=(cat!=='gestao'&&cat!=='logistica')?'block':'none';
+  if(cat==='logistica'){document.getElementById('log-data-envio').min=new Date().toISOString().split('T')[0];}
+  if(cat!=='gestao'&&cat!=='logistica'){document.getElementById('categoria').value=cat;onCatChange(cat);}
 }
 function onCatChange(forceCat) {
   const cat=forceCat||document.getElementById('categoria').value;
@@ -977,6 +1034,7 @@ function resetForm(){
   document.getElementById('plat-section').style.display='none';
   document.getElementById('attach-wrap').style.display='none';
   document.getElementById('gestao-form').style.display='none';
+  document.getElementById('logistica-form').style.display='none';
   document.getElementById('ticket-form').style.display='none';
   document.getElementById('default-state').style.display='block';
   document.getElementById('form-wrapper').style.display='block';
@@ -1001,6 +1059,53 @@ document.getElementById('departamento').addEventListener('change', function() {
   }
 });
 document.getElementById('data-desejada').min=new Date().toISOString().split('T')[0];
+
+function setTipoEnvio(tipo, btn) {
+  document.querySelectorAll('.tipo-envio-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('log-tipo-envio').value = tipo;
+}
+function onTranspChange() {
+  const transp = document.querySelector('input[name="transportadora"]:checked')?.value;
+  const slaMsg = document.getElementById('sla-msg');
+  const slaText = document.getElementById('sla-msg-text');
+  const slas = { 'DHL': 'DHL — 2 dias úteis', 'Correio': 'Correio — 7 dias úteis', 'Uber Flash': 'Uber Flash — Mesmo dia!' };
+  if (transp && slas[transp]) { slaText.textContent = slas[transp]; slaMsg.style.display = 'block'; }
+  else { slaMsg.style.display = 'none'; }
+}
+window.submitLogistica = async () => {
+  const transp = document.querySelector('input[name="transportadora"]:checked');
+  if (!transp) { alert('Selecione a transportadora.'); return; }
+  const dest = document.getElementById('log-destinatario').value.trim();
+  const end = document.getElementById('log-endereco').value.trim();
+  const item = document.getElementById('log-item').value.trim();
+  const dataEnvio = document.getElementById('log-data-envio').value;
+  if (!dest || !end || !item || !dataEnvio) { alert('Preencha todos os campos obrigatórios.'); return; }
+  tc++; localStorage.setItem('lc_tc', tc);
+  const id = 'LOG-' + String(tc).padStart(4,'0');
+  try {
+    const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(db, 'tickets'), {
+      id, nome: document.getElementById('nome').value, email: document.getElementById('email').value,
+      userId: auth.currentUser?.uid, departamento: document.getElementById('departamento').value,
+      unidade: document.getElementById('unidade').value, categoria: 'logistica',
+      subcategoria: transp.value, titulo: 'Envio ' + document.getElementById('log-tipo-envio').value + ' via ' + transp.value,
+      descricao: 'Item: ' + item + '\nDestinatário: ' + dest + '\nEndereço: ' + end,
+      prioridade: transp.value === 'Uber Flash' ? 'Urgente' : 'Média',
+      transportadora: transp.value, tipo_envio: document.getElementById('log-tipo-envio').value,
+      destinatario: dest, email_destinatario: document.getElementById('log-email-dest').value,
+      endereco_envio: end, item_enviado: item, serial_patrimonio: document.getElementById('log-serial').value,
+      data_envio_desejada: dataEnvio, observacoes: document.getElementById('log-obs').value,
+      status: 'Aberto', data_abertura: serverTimestamp(),
+      sla_dias: transp.value === 'DHL' ? 2 : transp.value === 'Correio' ? 7 : 0,
+      historico: [{ acao: 'Chamado de logística aberto', data: new Date().toISOString(), usuario: document.getElementById('nome').value }]
+    });
+    document.getElementById('ticket-num').textContent = '#' + id;
+    ['logistica-form','form-wrapper','category-grid','cat-label'].forEach(id => document.getElementById(id).style.display='none');
+    document.getElementById('success-screen').style.display = 'block';
+  } catch(err) { alert('Erro ao salvar. Tente novamente.'); }
+};
+
 </script>
 </body>
 </html>
