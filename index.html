@@ -396,38 +396,120 @@
         
         <!-- FORM LOGÍSTICA & ENVIOS -->
         <div id="logistica-form" class="conditional" style="display:none;">
+
           <p class="fs-title gap">📦 Tipo de Envio</p>
           <div class="tipo-envio-grid">
             <button type="button" class="tipo-envio-btn active" onclick="setTipoEnvio('equipamento',this)">💻 Equipamento</button>
             <button type="button" class="tipo-envio-btn" onclick="setTipoEnvio('kit',this)">📦 Kit Onboarding</button>
           </div>
           <input type="hidden" id="log-tipo-envio" value="equipamento">
+
           <p class="fs-title gap">🚛 Transportadora *</p>
           <div class="transp-grid">
             <div><input type="radio" name="transportadora" id="transp-dhl" value="DHL" class="transp-opt" onchange="onTranspChange()"><label for="transp-dhl" class="transp-label"><span class="t-icon">✈️</span><span class="t-nome">DHL</span><span class="t-prazo">SLA: 2 dias úteis</span></label></div>
             <div><input type="radio" name="transportadora" id="transp-correio" value="Correio" class="transp-opt" onchange="onTranspChange()"><label for="transp-correio" class="transp-label"><span class="t-icon">📮</span><span class="t-nome">Correio</span><span class="t-prazo">SLA: 7 dias úteis</span></label></div>
             <div><input type="radio" name="transportadora" id="transp-uber" value="Uber Flash" class="transp-opt" onchange="onTranspChange()"><label for="transp-uber" class="transp-label"><span class="t-icon">🚗</span><span class="t-nome">Uber Flash</span><span class="t-prazo">SLA: Mesmo dia</span></label></div>
           </div>
-          <div id="sla-msg" style="display:none;margin-top:-0.5rem;margin-bottom:1rem;"><span class="sla-badge">✅ <span id="sla-msg-text"></span></span></div>
-          <p class="fs-title gap">📍 Destinatário</p>
-          <div class="form-row gap">
-            <div class="field"><label>Nome do destinatário <span class="req">*</span></label><input type="text" id="log-destinatario" placeholder="Nome completo"></div>
-            <div class="field"><label>E-mail do destinatário</label><input type="email" id="log-email-dest" placeholder="email@logcomex.com"></div>
-          </div>
-          <div class="field gap"><label>Endereço completo <span class="req">*</span></label><input type="text" id="log-endereco" placeholder="Rua, número, bairro, cidade - CEP"></div>
-          <p class="fs-title gap">📋 Detalhes</p>
-          <div class="field gap"><label>O que será enviado? <span class="req">*</span></label><input type="text" id="log-item" placeholder="Ex: MacBook Air 13 (000-00220)..."></div>
-          <div class="form-row gap">
-            <div class="field"><label>Número de série / patrimônio</label><input type="text" id="log-serial" placeholder="Ex: 000-00220"></div>
-            <div class="field"><label>Data desejada para envio <span class="req">*</span></label><input type="date" id="log-data-envio"></div>
-          </div>
-          <div class="field gap"><label>Observações</label><textarea id="log-obs" rows="3" placeholder="Urgência, fragilidade, instruções especiais..."></textarea></div>
-          <div class="form-footer">
-            <p class="form-note">Você receberá um número de protocolo após o envio.</p>
-            <button type="button" class="btn-submit" onclick="submitLogistica()">Solicitar envio <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          </div>
-        </div>
+          <div id="sla-msg" style="display:none;margin-top:-0.5rem;margin-bottom:1.5rem;"><span class="sla-badge">✅ <span id="sla-msg-text"></span></span></div>
 
+          <!-- CAMPOS DHL -->
+          <div id="campos-dhl" style="display:none;">
+            <p class="fs-title gap">✈️ Dados para expedição DHL</p>
+            <div class="form-row gap">
+              <div class="field"><label>Nome completo <span class="req">*</span></label><input type="text" id="dhl-nome" placeholder="Nome completo do destinatário"></div>
+              <div class="field"><label>CPF <span class="req">*</span></label><input type="text" id="dhl-cpf" placeholder="000.000.000-00" oninput="mascaraCPF(this)" maxlength="14"></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Telefone <span class="req">*</span></label><input type="text" id="dhl-telefone" placeholder="(41) 99999-9999" oninput="mascaraTel(this)" maxlength="15"></div>
+              <div class="field"><label>E-mail do destinatário</label><input type="email" id="dhl-email" placeholder="email@logcomex.com"></div>
+            </div>
+            <p class="fs-title gap">📍 Endereço DHL</p>
+            <div class="form-row gap">
+              <div class="field"><label>CEP <span class="req">*</span></label><input type="text" id="dhl-cep" placeholder="00000-000" maxlength="9" oninput="buscaCepDHL(this.value)"></div>
+              <div class="field"><label>Rua / Av. <span class="req">*</span></label><input type="text" id="dhl-rua" placeholder="Rua..."></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Número <span class="req">*</span></label><input type="text" id="dhl-numero" placeholder="Nº"></div>
+              <div class="field"><label>Complemento</label><input type="text" id="dhl-complemento" placeholder="Apto, Bloco..."></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Bairro <span class="req">*</span></label><input type="text" id="dhl-bairro" placeholder="Bairro"></div>
+              <div class="field"><label>Cidade <span class="req">*</span></label><input type="text" id="dhl-cidade" placeholder="Cidade"></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Estado <span class="req">*</span></label><select id="dhl-estado"><option value="">UF...</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
+              <div class="field"><label>País</label><input type="text" id="dhl-pais" value="Brasil"></div>
+            </div>
+          </div>
+
+          <!-- CAMPOS CORREIO -->
+          <div id="campos-correio" style="display:none;">
+            <p class="fs-title gap">📮 Dados para expedição Correio</p>
+            <div class="form-row gap">
+              <div class="field"><label>Nome completo <span class="req">*</span></label><input type="text" id="cor-nome" placeholder="Nome completo do destinatário"></div>
+              <div class="field"><label>Telefone</label><input type="text" id="cor-telefone" placeholder="(41) 99999-9999" oninput="mascaraTel(this)" maxlength="15"></div>
+            </div>
+            <p class="fs-title gap">📍 Endereço Correio</p>
+            <div class="form-row gap">
+              <div class="field"><label>CEP <span class="req">*</span></label><input type="text" id="cor-cep" placeholder="00000-000" maxlength="9" oninput="buscaCepCorreio(this.value)"></div>
+              <div class="field"><label>Rua / Av. <span class="req">*</span></label><input type="text" id="cor-rua" placeholder="Rua..."></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Número <span class="req">*</span></label><input type="text" id="cor-numero" placeholder="Nº"></div>
+              <div class="field"><label>Complemento</label><input type="text" id="cor-complemento" placeholder="Apto, Bloco..."></div>
+            </div>
+            <div class="form-row gap">
+              <div class="field"><label>Bairro <span class="req">*</span></label><input type="text" id="cor-bairro" placeholder="Bairro"></div>
+              <div class="field"><label>Cidade <span class="req">*</span></label><input type="text" id="cor-cidade" placeholder="Cidade"></div>
+            </div>
+            <div class="field gap"><label>Estado <span class="req">*</span></label><select id="cor-estado"><option value="">UF...</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
+          </div>
+
+          <!-- CAMPOS UBER -->
+          <div id="campos-uber" style="display:none;">
+            <p class="fs-title gap">🚗 Dados para Uber Flash</p>
+            <div class="form-row gap">
+              <div class="field"><label>Nome completo <span class="req">*</span></label><input type="text" id="uber-nome" placeholder="Nome completo do destinatário"></div>
+              <div class="field"><label>Telefone <span class="req">*</span></label><input type="text" id="uber-telefone" placeholder="(41) 99999-9999" oninput="mascaraTel(this)" maxlength="15"></div>
+            </div>
+            <div class="field gap"><label>Endereço completo <span class="req">*</span></label><input type="text" id="uber-endereco" placeholder="Rua, número, bairro, cidade"></div>
+            <p class="fs-title gap">🏠 Tipo de Residência <span class="req">*</span></p>
+            <div style="display:flex;gap:12px;margin-bottom:1rem;">
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--ink2);transition:all 0.15s;">
+                <input type="radio" name="tipo_residencia" value="Casa" onchange="onResidenciaChange()" style="accent-color:var(--purple);width:16px;height:16px;"> 🏠 Casa
+              </label>
+              <label style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--ink2);transition:all 0.15s;">
+                <input type="radio" name="tipo_residencia" value="Apartamento" onchange="onResidenciaChange()" style="accent-color:var(--purple);width:16px;height:16px;"> 🏢 Apartamento
+              </label>
+            </div>
+            <div id="campos-apartamento" style="display:none;">
+              <div class="form-row gap">
+                <div class="field"><label>Nº do Apartamento <span class="req">*</span></label><input type="text" id="uber-apt" placeholder="Ex: 42"></div>
+                <div class="field"><label>Bloco</label><input type="text" id="uber-bloco" placeholder="Ex: B (se houver)"></div>
+              </div>
+              <div class="form-row gap">
+                <div class="field"><label>Portaria / Referência</label><input type="text" id="uber-portaria" placeholder="Ex: Portaria principal..."></div>
+                <div class="field"><label>Observações de acesso</label><input type="text" id="uber-obs-acesso" placeholder="Ex: Interfone 42..."></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DETALHES DO ITEM -->
+          <div id="campos-item" style="display:none;">
+            <p class="fs-title gap">📋 Detalhes do Item</p>
+            <div class="field gap"><label>O que será enviado? <span class="req">*</span></label><input type="text" id="log-item" placeholder="Ex: Mouse + Teclado, MacBook Air 13..."></div>
+            <div class="form-row gap">
+              <div class="field"><label>Número de série / patrimônio</label><input type="text" id="log-serial" placeholder="Ex: 000-00220"></div>
+              <div class="field"><label>Data desejada para envio <span class="req">*</span></label><input type="date" id="log-data-envio"></div>
+            </div>
+            <div class="field gap"><label>Observações</label><textarea id="log-obs" rows="3" placeholder="Fragilidade, urgência, instruções especiais..."></textarea></div>
+            <div class="form-footer">
+              <p class="form-note">Você receberá um número de protocolo após o envio.</p>
+              <button type="button" class="btn-submit" onclick="submitLogistica()">Solicitar envio <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+
+        </div>
         <div id="gestao-form" class="conditional">
           <div class="feedback-shell">
             <div class="fb-header" id="fb-header">
@@ -1074,9 +1156,43 @@ function onTranspChange() {
   const transp = document.querySelector('input[name="transportadora"]:checked')?.value;
   const slaMsg = document.getElementById('sla-msg');
   const slaText = document.getElementById('sla-msg-text');
-  const slas = { 'DHL': 'DHL — 2 dias úteis', 'Correio': 'Correio — 7 dias úteis', 'Uber Flash': 'Uber Flash — Mesmo dia!' };
+  const slas = {'DHL':'DHL — 2 dias úteis','Correio':'Correio — 7 dias úteis','Uber Flash':'Uber Flash — Mesmo dia!'};
   if (transp && slas[transp]) { slaText.textContent = slas[transp]; slaMsg.style.display = 'block'; }
   else { slaMsg.style.display = 'none'; }
+  ['campos-dhl','campos-correio','campos-uber','campos-item'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  if (transp==='DHL') { document.getElementById('campos-dhl').style.display='block'; document.getElementById('campos-item').style.display='block'; document.getElementById('log-data-envio').min=new Date().toISOString().split('T')[0]; }
+  else if (transp==='Correio') { document.getElementById('campos-correio').style.display='block'; document.getElementById('campos-item').style.display='block'; document.getElementById('log-data-envio').min=new Date().toISOString().split('T')[0]; }
+  else if (transp==='Uber Flash') { document.getElementById('campos-uber').style.display='block'; document.getElementById('campos-item').style.display='block'; document.getElementById('log-data-envio').min=new Date().toISOString().split('T')[0]; }
+}
+function onResidenciaChange() {
+  const tipo = document.querySelector('input[name="tipo_residencia"]:checked')?.value;
+  document.getElementById('campos-apartamento').style.display = tipo==='Apartamento' ? 'block' : 'none';
+}
+function mascaraCPF(el) {
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+  else if(v.length>6) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+  else if(v.length>3) v=v.slice(0,3)+'.'+v.slice(3);
+  el.value=v;
+}
+function mascaraTel(el) {
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>10) v='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);
+  else if(v.length>6) v='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);
+  else if(v.length>2) v='('+v.slice(0,2)+') '+v.slice(2);
+  el.value=v;
+}
+async function buscaCepDHL(cep) {
+  cep=cep.replace(/\D/g,''); if(cep.length!==8) return;
+  try { const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/'); const d=await r.json();
+    if(!d.erro){document.getElementById('dhl-rua').value=d.logradouro||'';document.getElementById('dhl-bairro').value=d.bairro||'';document.getElementById('dhl-cidade').value=d.localidade||'';document.getElementById('dhl-estado').value=d.uf||'';}
+  } catch(e){}
+}
+async function buscaCepCorreio(cep) {
+  cep=cep.replace(/\D/g,''); if(cep.length!==8) return;
+  try { const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/'); const d=await r.json();
+    if(!d.erro){document.getElementById('cor-rua').value=d.logradouro||'';document.getElementById('cor-bairro').value=d.bairro||'';document.getElementById('cor-cidade').value=d.localidade||'';document.getElementById('cor-estado').value=d.uf||'';}
+  } catch(e){}
 }
 window.submitLogistica = async () => {
   const transp = document.querySelector('input[name="transportadora"]:checked');
