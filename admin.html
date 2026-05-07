@@ -352,7 +352,7 @@
       <div class="chart-card"><div class="chart-title">SLA por Prioridade</div><div class="chart-sub">Taxa de chamados concluídos dentro do prazo</div><div><div class="sla-bars" id="sla-bars"></div></div></div>
     </div>
     <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Top Centros de Custo</div><div class="chart-sub">Quem mais abre chamados</div><div class="chart-wrap"><canvas id="chart-dept"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Top Solicitantes</div><div class="chart-sub">Quem mais abre chamados</div><div class="chart-wrap"><canvas id="chart-dept"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Chamados por Prioridade</div><div class="chart-sub">Distribuição de urgência</div><div class="chart-wrap"><canvas id="chart-prio"></canvas></div></div>
     </div>
   </div>
@@ -706,8 +706,11 @@ function updateBadge() {
     }).join('');
 
     const deptCounts = {};
-    T.forEach(t => { if(t.departamento) deptCounts[t.departamento]=(deptCounts[t.departamento]||0)+1; });
-    const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    T.forEach(t => {
+      const nome = (t.titulo||t.nome||'').trim();
+      if (nome && nome !== 'Sem chamados registrados no período') deptCounts[nome]=(deptCounts[nome]||0)+1;
+    });
+    const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
     if (charts.dept) charts.dept.destroy();
     charts.dept = new Chart(document.getElementById('chart-dept').getContext('2d'), {
       type: 'bar',
