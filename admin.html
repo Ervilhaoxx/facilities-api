@@ -1168,7 +1168,7 @@ function renderDashboardComFiltro(tickets) {
     else if(tipo==='ano') descEl.textContent='Chamados abertos em '+(window._periodoAno||'');
     else descEl.textContent='Exibindo todos os '+total+' chamados do sistema';
   }
-  if (typeof updateCharts === 'function') updateCharts(tickets);
+  if (typeof window.updateCharts === 'function') window.updateCharts(tickets);
 }
 
 window.setPeriodoTipo = setPeriodoTipo;
