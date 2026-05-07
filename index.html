@@ -545,7 +545,13 @@
           <p class="fs-title gap">👤 Seus dados</p>
           <div class="form-row gap">
             <div class="field"><label>Nome completo <span class="req">*</span></label><input type="text" id="nome" required placeholder="Seu nome completo"></div>
-            <div class="field"><label>E-mail corporativo <span class="req">*</span></label><input type="email" id="email" required placeholder="nome@logcomex.com"></div>
+            <div class="field">
+              <label>E-mail corporativo <span class="req">*</span></label>
+              <div style="position:relative;">
+                <input type="email" id="email" required placeholder="nome@logcomex.com" oninput="buscarColaborador(this.value)" autocomplete="off">
+                <span id="colab-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.75rem;color:var(--success);display:none;">✅ Dados preenchidos</span>
+              </div>
+            </div>
           </div>
           <div class="form-row gap">
             <div class="field">
@@ -1272,6 +1278,63 @@ window.submitLogistica = async () => {
     document.getElementById('success-screen').scrollIntoView({behavior:'smooth', block:'start'});
   } catch(err) { console.error(err); alert('Erro ao salvar. Tente novamente. ' + err.message); }
 };
+
+// ── AUTOCOMPLETE COLABORADOR ──────────────────────────────────
+let _colaboradoresCache = null;
+
+async function carregarColaboradores() {
+  if (_colaboradoresCache) return _colaboradoresCache;
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window.db, 'colaboradores'));
+    _colaboradoresCache = {};
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.email) _colaboradoresCache[data.email.toLowerCase()] = data;
+    });
+    return _colaboradoresCache;
+  } catch(e) { return {}; }
+}
+
+carregarColaboradores();
+
+let _buscarTimer = null;
+window.buscarColaborador = async function(emailDigitado) {
+  clearTimeout(_buscarTimer);
+  const status = document.getElementById('colab-status');
+  if (!emailDigitado || !emailDigitado.includes('@')) {
+    if (status) status.style.display = 'none';
+    return;
+  }
+  _buscarTimer = setTimeout(async () => {
+    const colaboradores = await carregarColaboradores();
+    const colab = colaboradores[emailDigitado.toLowerCase()];
+    if (colab) {
+      const nomeEl = document.getElementById('nome');
+      if (nomeEl && !nomeEl.value) {
+        const palavras = colab.nome.toLowerCase().split(' ');
+        const preps = ['da','de','do','das','dos','e'];
+        nomeEl.value = palavras.map(p => preps.includes(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+      }
+      const deptEl = document.getElementById('departamento');
+      if (deptEl && colab.centroCusto) {
+        for (let opt of deptEl.options) {
+          if (opt.value === colab.centroCusto || opt.text === colab.centroCusto) {
+            deptEl.value = opt.value;
+            break;
+          }
+        }
+      }
+      if (status) {
+        status.style.display = 'inline';
+        status.textContent = colab.cargo ? '✅ ' + colab.cargo : '✅ Dados preenchidos';
+      }
+    } else {
+      if (status) status.style.display = 'none';
+    }
+  }, 400);
+};
+
 
 </script>
 </body>
