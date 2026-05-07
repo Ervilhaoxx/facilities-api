@@ -61,7 +61,7 @@
   .main::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
   .page { display: none; }
   .page.active { display: block; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem; }
+  .topbar, .page-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem; }
   .page-title { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.04em; }
   .topbar-actions { display: flex; gap: 10px; align-items: center; }
   .btn { padding: 9px 18px; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
@@ -279,8 +279,6 @@
     <div class="sb-section">Histórico</div>
     <div class="nav-item" onclick="nav('historico',this)"><span>📈</span> Histórico Pipefy</div>
     <div class="nav-item" onclick="syncPipefy()" id="btn-sync-pipefy" style="cursor:pointer;margin-top:4px;border:1px solid rgba(254,143,28,0.3);border-radius:8px;color:rgba(254,143,28,0.8);"><span>🔄</span> Sincronizar Pipefy</div>
-    <div class="sb-section">Logística</div>
-    <div class="nav-item" onclick="nav('logistica',this)"><span>🚚</span> Envios</div>
     <div class="sb-section">Links</div>
     <a href="index.html" class="nav-item"><span>↗</span> Formulário público</a>
   </nav>
@@ -665,7 +663,7 @@ function updateBadge() {
     charts.status = new Chart(document.getElementById('chart-status').getContext('2d'), {
       type: 'bar',
       data: { labels: statuses, datasets: [{ data: statuses.map(s => T.filter(t=>t.status===s).length), backgroundColor: statusColors, borderRadius: 6, borderSkipped: false }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
     });
 
     const months = [], monthCounts = [];
@@ -678,7 +676,7 @@ function updateBadge() {
     charts.monthly = new Chart(document.getElementById('chart-monthly').getContext('2d'), {
       type: 'line',
       data: { labels: months, datasets: [{ data: monthCounts, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#6613D0', pointRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk' } }, grid: { display: false } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { family: 'Space Grotesk' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Space Grotesk' } }, grid: { display: false } } } }
     });
 
     const prios = ['Urgente','Alta','Média','Baixa'], colors = ['#ef4444','#e45c10','#d97706','#12b76a'];
@@ -697,7 +695,7 @@ function updateBadge() {
     charts.dept = new Chart(document.getElementById('chart-dept').getContext('2d'), {
       type: 'bar',
       data: { labels: sorted.map(x=>x[0].length>20?x[0].substring(0,18)+'…':x[0]), datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: 'rgba(102,19,208,0.7)', borderRadius: 6, borderSkipped: false }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Space Grotesk', size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } } }
     });
 
     if (charts.prio) charts.prio.destroy();
