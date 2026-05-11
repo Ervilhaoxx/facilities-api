@@ -104,6 +104,52 @@ export default async function handler(req, res) {
     await db.collection('tickets').doc(docId).set(docData, { merge: true });
 
     console.log(`✅ Card ${docId} salvo — ação: ${action}, status: ${status}`);
+
+    // Notificar Slack para novos chamados (card.create) ou mudanças importantes
+    if (action === 'card.create' || action === 'card.move') {
+      try {
+        const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+        const SLACK_CHANNEL = process.env.SLACK_FACILITIES_CHANNEL || 'C08QX1YNUKU';
+        
+        if (SLACK_BOT_TOKEN) {
+          const emoji = action === 'card.create' ? '🆕' : '🔄';
+          const statusEmoji = {'Aberto':'🔵','Aguardando aprovação':'🟡','Em andamento':'🟠','Concluído':'🟢','Cancelado':'⚫'}[status] || '⚪';
+          
+          const msg = {
+            channel: SLACK_CHANNEL,
+            text: `${emoji} *Novo chamado no Facilities*`,
+            blocks: [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `${emoji} *${action === 'card.create' ? 'Novo chamado aberto' : 'Chamado atualizado'}*
+*${card.title || 'Sem título'}*
+${statusEmoji} Status: *${status}* | Fase: ${faseNome}`
+                }
+              },
+              {
+                type: 'context',
+                elements: [
+                  { type: 'mrkdwn', text: `🆔 ${docId} | 📋 ${tipo}` },
+                  { type: 'mrkdwn', text: `<https://facilities-api.vercel.app/admin.html|Ver no Admin →>` }
+                ]
+              }
+            ]
+          };
+
+          await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(msg)
+          });
+        }
+      } catch (slackErr) {
+        console.error('Erro ao notificar Slack:', slackErr);
+        // Não falha o webhook por causa do Slack
+      }
+    }
+
     return res.status(200).json({ ok: true, docId, status, action });
 
   } catch (err) {
