@@ -1,5 +1,8 @@
 {
   "name": "facilities-logcomex-api",
   "version": "1.0.0",
-  "description": "API backend para relatórios de facilities LogComex"
+  "description": "API backend para relatórios de facilities LogComex",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
 }
