@@ -305,7 +305,7 @@
     <div class="topbar">
       <div><div class="page-title">Dashboard</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;" id="dash-date"></div></div>
       <div class="topbar-actions">
-        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar Excel</button>
         <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
       </div>
     </div>
@@ -375,7 +375,7 @@
     <div class="topbar">
       <div class="page-title">Chamados</div>
       <div class="topbar-actions">
-        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar Excel</button>
         <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
       </div>
     </div>
@@ -869,15 +869,64 @@ function updateBadge() {
       : '<p style="font-size:0.82rem;color:var(--ink3);">Sem histórico.</p>';
   };
 
-  window.exportCSV = () => {
-    const h = ['Protocolo','Nome','Email','Centro de Custo','Unidade','Categoria','Subcategoria','Prioridade','Status','Plataformas','Titulo','Descricao','Data abertura','Data desejada'];
-    const rows = allTickets.map(t => [t.id,t.nome,t.email,t.departamento,t.unidade,CATLABELS[t.categoria]||t.categoria,t.subcategoria,t.prioridade,t.status,t.plataformas||'',`"${(t.titulo||'').replace(/"/g,'""')}"`,`"${(t.descricao||'').replace(/"/g,'""')}"`,fds(t.data_abertura),t.data_desejada||'']);
-    const csv = [h,...rows].map(r=>r.join(';')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-    a.download = 'facilities_logcomex_'+new Date().toISOString().split('T')[0]+'.csv';
-    a.click();
-    showToast('CSV exportado!');
+  window.exportCSV = async () => {
+    showToast('Gerando Excel...');
+    // Carregar SheetJS dinamicamente
+    if (!window.XLSX) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    const XLSX = window.XLSX;
+    const data = allTickets.map(t => ({
+      'Protocolo': t.id || '',
+      'Nome': t.nome || '',
+      'Email': t.email || '',
+      'Centro de Custo': t.departamento || '',
+      'Categoria': CATLABELS[t.categoria] || t.categoria || '',
+      'Subcategoria': t.subcategoria || t.tipo_pipefy || '',
+      'Título': t.titulo || '',
+      'Status': t.status || '',
+      'Prioridade': t.prioridade || '',
+      'Fase Pipefy': t.fase_pipefy || '',
+      'Origem': t.origem === 'pipefy' ? 'Pipefy' : 'Formulário',
+      'Descrição': (t.descricao || '').replace(/\n/g, ' | '),
+      'Data Abertura': fds(t.data_abertura),
+      'Data Conclusão': t.data_conclusao ? fds(t.data_conclusao) : '',
+      'Dentro do SLA': t.dentroSLA === true ? 'Sim' : t.dentroSLA === false ? 'Não' : '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Larguras das colunas
+    ws['!cols'] = [
+      {wch:20},{wch:25},{wch:32},{wch:28},{wch:18},{wch:25},
+      {wch:35},{wch:18},{wch:12},{wch:25},{wch:12},{wch:50},
+      {wch:15},{wch:15},{wch:12}
+    ];
+
+    // Estilo do cabeçalho (linha 1)
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({r:0, c:C});
+      if (!ws[addr]) continue;
+      ws[addr].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '6613D0' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false }
+      };
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chamados');
+
+    const nome = 'facilities_logcomex_' + new Date().toISOString().split('T')[0] + '.xlsx';
+    XLSX.writeFile(wb, nome);
+    showToast('✅ Excel exportado!');
   };
   window.updateCharts = updateCharts;
 </script>
