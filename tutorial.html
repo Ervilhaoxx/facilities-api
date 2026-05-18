@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Facilities LogComex — Como usar</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;background:#0a001f;font-family:'Sora',sans-serif;overflow:hidden;}
+#wrap{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a001f;}
+#stage{position:relative;width:100%;max-width:540px;}
+#stage::before{content:'';display:block;padding-top:56.25%;}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:16px;}
+#controls{width:100%;max-width:540px;display:flex;align-items:center;gap:10px;padding:10px 4px 0;}
+#playbtn{display:flex;align-items:center;justify-content:center;width:42px;height:42px;background:#6613D0;border:none;border-radius:50%;cursor:pointer;flex-shrink:0;transition:background .2s;}
+#playbtn:hover{background:#4e0fa0;}
+#playbtn svg{width:18px;height:18px;fill:#fff;}
+#pbarwrap{flex:1;height:5px;background:rgba(255,255,255,0.15);border-radius:3px;cursor:pointer;position:relative;}
+#pfill{height:100%;width:0%;background:#FF6B2B;border-radius:3px;pointer-events:none;transition:width .08s linear;}
+#tlbl{font-size:12px;color:rgba(255,255,255,0.4);min-width:50px;text-align:right;}
+#soundbtn{width:32px;height:32px;background:none;border:none;cursor:pointer;opacity:0.5;flex-shrink:0;}
+#soundbtn svg{width:20px;height:20px;fill:rgba(255,255,255,0.7);}
+#tap-hint{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;font-size:13px;padding:8px 20px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .5s;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="tap-hint">Toque para iniciar</div>
+  </div>
+  <div id="controls">
+    <button id="playbtn" onclick="tog()" aria-label="Play/Pausar">
+      <svg id="ico-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      <svg id="ico-pause" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="3" width="4" height="18" rx="1"/><rect x="14" y="3" width="4" height="18" rx="1"/></svg>
+      <svg id="ico-restart" viewBox="0 0 24 24" style="display:none;"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-3.1" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+    </button>
+    <div id="pbarwrap" onclick="seek(event)"><div id="pfill"></div></div>
+    <span id="tlbl">0s / 25s</span>
+    <button id="soundbtn" onclick="toggleSound()" aria-label="Som">
+      <svg id="ico-sound" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="rgba(255,255,255,0.7)" stroke="none"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+      <svg id="ico-mute" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none" stroke-linecap="round" style="display:none;">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="rgba(255,255,255,0.3)" stroke="none"/>
+        <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+const W=540,H=304,DUR=25000;
+cv.width=W;cv.height=H;
+
+let T=0,playing=false,prev=null,raf=null,muted=false,ac=null,sounds={};
+
+// Som via Web Audio API
+function initAudio(){
+  if(ac) return;
+  ac=new(window.AudioContext||window.webkitAudioContext)();
+}
+
+function beep(freq,dur,vol,type,delay){
+  if(!ac||muted) return;
+  const o=ac.createOscillator();
+  const g=ac.createGain();
+  o.connect(g);g.connect(ac.destination);
+  o.type=type||'sine';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,ac.currentTime+(delay||0));
+  g.gain.linearRampToValueAtTime(vol||0.1,ac.currentTime+(delay||0)+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+(delay||0)+dur);
+  o.start(ac.currentTime+(delay||0));
+  o.stop(ac.currentTime+(delay||0)+dur+0.05);
+}
+
+function playScene(scene){
+  if(!ac||muted) return;
+  if(scene===0){
+    beep(880,0.15,0.08,'sine',0);
+    beep(1100,0.15,0.08,'sine',0.15);
+    beep(1320,0.3,0.1,'sine',0.3);
+  } else if(scene===1||scene===2||scene===3){
+    beep(660,0.1,0.07,'sine',0);
+    beep(880,0.15,0.08,'sine',0.1);
+  } else if(scene===4){
+    beep(523,0.08,0.06,'sine',0);
+    beep(659,0.08,0.06,'sine',0.08);
+    beep(784,0.08,0.06,'sine',0.16);
+    beep(1047,0.3,0.1,'sine',0.24);
+  }
+}
+
+let lastScene=-1;
+const sceneTimes=[0,5000,10000,15000,20000];
+
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ez=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const fi=(s,d,t)=>ez(cl((t-s)/d,0,1));
+
+function rr(rx,ry,rw,rh,r,fill,stroke,lw){
+  ctx.beginPath();ctx.roundRect(rx,ry,rw,rh,r);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1.5;ctx.stroke();}
+}
+
+function txt(s,tx,ty,sz,col,al,w){
+  ctx.font=`${w||400} ${sz}px 'Sora',sans-serif`;
+  ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.textBaseline='middle';
+  ctx.fillText(s,tx,ty);
+}
+
+function pill(px,py,label,alpha){
+  ctx.globalAlpha=alpha;
+  rr(px-54,py-12,108,24,12,'rgba(102,19,208,0.5)');
+  txt(label,px,py,11,'#d4b4ff','center',600);
+  ctx.globalAlpha=1;
+}
+
+function person(px,py,s,col,lbl,alpha){
+  ctx.globalAlpha=alpha;
+  ctx.fillStyle=col;
+  ctx.beginPath();ctx.arc(px,py-12*s,13*s,0,6.28);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  ctx.beginPath();ctx.arc(px-4*s,py-14*s,2.5*s,0,6.28);ctx.fill();
+  ctx.beginPath();ctx.arc(px+4*s,py-14*s,2.5*s,0,6.28);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.75)';ctx.lineWidth=1.5*s;
+  ctx.beginPath();ctx.arc(px,py-10*s,5*s,0,Math.PI);ctx.stroke();
+  rr(px-12*s,py+2*s,24*s,30*s,7*s,col);
+  if(lbl){txt(lbl,px,py+46*s,10,'rgba(255,255,255,0.55)','center');}
+  ctx.globalAlpha=1;
+}
+
+function phone(px,py,alpha){
+  ctx.globalAlpha=alpha;
+  rr(px-32,py-58,64,116,10,'#1a0040','rgba(255,255,255,0.12)');
+  rr(px-24,py-48,48,84,6,'#0a001a');
+  rr(px-18,py-42,36,8,3,'rgba(102,19,208,0.7)');
+  [0,14,28,44].forEach(dy=>{rr(px-18,py-28+dy,32,5,2,'rgba(255,255,255,0.18)');});
+  ctx.globalAlpha=1;
+}
+
+function checkmark(cx,cy,alpha){
+  ctx.globalAlpha=alpha;
+  ctx.beginPath();ctx.arc(cx,cy,18,0,6.28);ctx.fillStyle='#16a34a';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(cx-8,cy);ctx.lineTo(cx-2,cy+6);ctx.lineTo(cx+8,cy-6);ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+function bellIcon(bx,by,alpha){
+  ctx.globalAlpha=alpha;
+  ctx.fillStyle='#FF6B2B';
+  ctx.beginPath();
+  ctx.arc(bx,by-6,12,Math.PI,0);
+  ctx.lineTo(bx+12,by+6);ctx.lineTo(bx-12,by+6);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.arc(bx,by+8,4,0,Math.PI);ctx.fill();
+  // dot notification
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(bx+9,by-15,4,0,6.28);ctx.fill();
+  ctx.fillStyle='#FF6B2B';
+  ctx.beginPath();ctx.arc(bx+9,by-15,2.5,0,6.28);ctx.fill();
+  ctx.globalAlpha=1;
+}
+
+const cats=[
+  {e:'🔧',l:'Manutencao',c:'rgba(102,19,208,0.5)'},
+  {e:'📦',l:'Suprimentos',c:'rgba(255,107,43,0.45)'},
+  {e:'🎁',l:'Brindes',c:'rgba(22,163,74,0.4)'},
+  {e:'🚚',l:'Logistica',c:'rgba(59,130,246,0.4)'},
+  {e:'🔑',l:'Acessos',c:'rgba(234,179,8,0.4)'},
+  {e:'🧹',l:'Limpeza',c:'rgba(236,72,153,0.4)'},
+];
+
+function bgDraw(){
+  ctx.fillStyle='#0a001f';ctx.fillRect(0,0,W,H);
+  // particles
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  [[55,22],[130,65],[310,15],[470,50],[590,28],[190,150],[530,130],[85,175],[620,175],[250,85],[400,100]].forEach(([a,b])=>{
+    ctx.beginPath();ctx.arc(a,b,.8,0,6.28);ctx.fill();
+  });
+}
+
+function draw(T){
+  bgDraw();
+
+  // scene trigger sounds
+  const scIdx=sceneTimes.findIndex((s,i)=>T>=s&&(i===4||T<sceneTimes[i+1]));
+  if(scIdx!==lastScene&&playing){playScene(scIdx);lastScene=scIdx;}
+
+  // SCENE 1: Intro (0-5s)
+  if(T<5200){
+    const fo=T>4400?1-fi(4400,700,T):1;
+    ctx.globalAlpha=fi(0,500,T)*fo;
+    txt('Facilities',W/2,H/2-46,28,'#ffffff','center',700);
+    ctx.globalAlpha=fi(250,500,T)*fo;
+    txt('LogComex',W/2,H/2-8,28,'#FF6B2B','center',400);
+    ctx.globalAlpha=fi(650,500,T)*fo;
+    txt('Central de Chamados',W/2,H/2+32,13,'rgba(255,255,255,0.5)');
+    ctx.globalAlpha=fi(1100,600,T)*fo;
+    txt('Resolva qualquer necessidade do escritorio',W/2,H/2+62,12,'rgba(255,255,255,0.3)');
+    txt('em poucos minutos',W/2,H/2+78,12,'rgba(255,255,255,0.3)');
+    // pulse ring
+    const pr=fi(1600,1000,T)*fo;
+    if(pr>0){
+      ctx.globalAlpha=pr*0.15;
+      ctx.strokeStyle='#6613D0';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(W/2,H/2-28,60+pr*30,0,6.28);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // SCENE 2: Login (5s-10s)
+  if(T>=4700&&T<10200){
+    const lt=T-5000,fo=T>9400?1-fi(9400,700,T):1;
+    pill(W/2,28,`PASSO 1`,fi(0,500,lt)*fo);
+    ctx.globalAlpha=fi(200,500,lt)*fo;
+    txt('Acesse com seu e-mail @logcomex.com',W/2,58,15,'#ffffff','center',600);
+    ctx.globalAlpha=fi(400,400,lt)*fo;
+    txt('Login com Google — sem senha!',W/2,78,12,'rgba(255,255,255,0.45)');
+    person(W/2-80,H/2+8,1,'#6613D0','Voce',fi(500,500,lt)*fo);
+    phone(W/2+72,H/2-4,fi(600,500,lt)*fo);
+    // arrow
+    ctx.globalAlpha=fi(900,500,lt)*fo;
+    ctx.strokeStyle='rgba(255,107,43,0.55)';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(W/2-46,H/2-10);ctx.lineTo(W/2+40,H/2-10);ctx.stroke();ctx.setLineDash([]);
+    ctx.globalAlpha=fi(1100,500,lt)*fo;
+    rr(W/2-110,H/2+78,220,26,7,'rgba(102,19,208,0.35)');
+    txt('Nome e centro de custo preenchidos automaticamente!',W/2,H/2+91,10,'#c9a0ff','center',500);
+    ctx.globalAlpha=1;
+  }
+
+  // SCENE 3: Categorias (10s-15s)
+  if(T>=9700&&T<15200){
+    const lt=T-10000,fo=T>14400?1-fi(14400,700,T):1;
+    pill(W/2,28,'PASSO 2',fi(0,500,lt)*fo);
+    ctx.globalAlpha=fi(200,500,lt)*fo;
+    txt('Escolha a categoria do chamado',W/2,58,15,'#ffffff','center',600);
+    cats.forEach((c,i)=>{
+      const col=i%3,row=Math.floor(i/3);
+      const cx=W/2-120+col*120,cy=H/2-18+row*70;
+      ctx.globalAlpha=fi(600+i*160,350,lt)*fo;
+      rr(cx-46,cy-20,92,44,9,c.c,'rgba(255,255,255,0.07)');
+      ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(c.e,cx,cy-3);
+      txt(c.l,cx,cy+14,10,'rgba(255,255,255,0.85)','center',500);
+    });
+    ctx.globalAlpha=1;
+  }
+
+  // SCENE 4: Formulario (15s-20s)
+  if(T>=14700&&T<20200){
+    const lt=T-15000,fo=T>19400?1-fi(19400,700,T):1;
+    pill(W/2,28,'PASSO 3',fi(0,500,lt)*fo);
+    ctx.globalAlpha=fi(200,500,lt)*fo;
+    txt('Preencha e envie o chamado',W/2,58,15,'#ffffff','center',600);
+    ctx.globalAlpha=fi(400,400,lt)*fo;
+    rr(W/2-148,80,296,176,12,'rgba(255,255,255,0.04)','rgba(255,255,255,0.08)');
+    const flds=[
+      {l:'Nome',v:'Joao Faria',ok:true},
+      {l:'Centro de custo',v:'Financeiro Corporate',ok:true},
+      {l:'Descricao',v:'Preciso de novo teclado...'},
+      {l:'Data desejada',v:'28/05/2026'}
+    ];
+    flds.forEach((f,i)=>{
+      ctx.globalAlpha=fi(500+i*190,380,lt)*fo;
+      const fy=94+i*38;
+      txt(f.l,W/2-140,fy,10,'rgba(255,255,255,0.4)','left');
+      rr(W/2-140,fy+7,280,22,5,f.ok?'rgba(102,19,208,0.3)':'rgba(255,255,255,0.05)','rgba(255,255,255,0.1)');
+      txt(f.v,W/2-132,fy+18,10,f.ok?'#c9a0ff':'rgba(255,255,255,0.65)','left');
+    });
+    ctx.globalAlpha=fi(1800,500,lt)*fo;
+    rr(W/2-52,264,104,24,7,'#6613D0');
+    txt('Enviar chamado',W/2,276,12,'#fff','center',600);
+    ctx.globalAlpha=1;
+  }
+
+  // SCENE 5: Slack + Pronto (20s-25s)
+  if(T>=19700){
+    const lt=T-20000;
+    pill(W/2,28,'PRONTO!',fi(0,500,lt));
+    ctx.globalAlpha=fi(200,500,lt);
+    txt('Acompanhe pelo Slack',W/2,58,15,'#ffffff','center',600);
+    person(W/2,H/2+10,1.05,'#6613D0','Voce',fi(350,500,lt));
+    bellIcon(W/2+86,H/2-44,fi(600,600,lt));
+    checkmark(W/2-74,H/2-44,fi(850,500,lt));
+    ctx.globalAlpha=fi(1100,500,lt);
+    rr(W/2-118,H/2+72,236,24,6,'rgba(255,107,43,0.2)','rgba(255,107,43,0.4)');
+    txt('Chamado concluido! Avalie o atendimento',W/2,H/2+84,11,'rgba(255,107,43,0.9)','center',500);
+    ctx.globalAlpha=fi(1600,500,lt);
+    rr(W/2-118,H/2+102,236,24,6,'rgba(22,163,74,0.2)','rgba(22,163,74,0.4)');
+    txt('Rastreio DHL enviado pelo Slack!',W/2,H/2+114,11,'rgba(134,239,172,0.9)','center',500);
+    ctx.globalAlpha=fi(2200,600,lt);
+    txt('facilities-api.vercel.app',W/2,H-22,13,'#FF6B2B','center',600);
+    ctx.globalAlpha=1;
+  }
+
+  // progress
+  document.getElementById('pfill').style.width=Math.min(T/DUR*100,100)+'%';
+  document.getElementById('tlbl').textContent=Math.floor(T/1000)+'s / 25s';
+}
+
+function loop(ts){
+  if(!prev)prev=ts;
+  T=Math.min(T+(ts-prev),DUR);prev=ts;draw(T);
+  if(T<DUR&&playing)raf=requestAnimationFrame(loop);
+  else if(T>=DUR){
+    playing=false;
+    document.getElementById('ico-play').style.display='none';
+    document.getElementById('ico-pause').style.display='none';
+    document.getElementById('ico-restart').style.display='block';
+  }
+}
+
+function tog(){
+  initAudio();
+  if(T>=DUR){
+    T=0;lastScene=-1;
+    document.getElementById('ico-restart').style.display='none';
+  }
+  playing=!playing;
+  document.getElementById('ico-play').style.display=playing?'none':'block';
+  document.getElementById('ico-pause').style.display=playing?'block':'none';
+  document.getElementById('ico-restart').style.display='none';
+  if(playing){prev=null;raf=requestAnimationFrame(loop);}
+  else cancelAnimationFrame(raf);
+}
+
+function seek(e){
+  initAudio();
+  const r=e.currentTarget.getBoundingClientRect();
+  T=Math.round(cl((e.clientX-r.left)/r.width,0,1)*DUR);
+  lastScene=-1;draw(T);
+}
+
+function toggleSound(){
+  muted=!muted;
+  document.getElementById('ico-sound').style.display=muted?'none':'block';
+  document.getElementById('ico-mute').style.display=muted?'block':'none';
+}
+
+// hint no mobile
+const hint=document.getElementById('tap-hint');
+hint.style.opacity='1';
+setTimeout(()=>hint.style.opacity='0',2500);
+
+draw(0);
+</script>
+</body>
+</html>
