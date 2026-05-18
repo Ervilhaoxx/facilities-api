@@ -9,14 +9,12 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --purple: #6613D0; --purple-dark: #4e0fa0; --purple-light: #f3eaff; --purple-mid: #c9a0ff;
-    --orange: #FF6B2B; --black: #0B0D19;
+    --orange: #FF6B2B; --orange-light: #ff8c57; --black: #0B0D19;
     --ink: #1e1b4b; --ink2: #6b7280; --ink3: #9ca3af;
     --surface: #ffffff; --surface2: #f5f3ff; --surface3: #ede9fe;
-    --border: rgba(102,19,208,0.1);
-    --success: #12b76a; --success-bg: #e8f8ef;
-    --danger: #ef4444; --danger-bg: #fef2f2;
-    --warning: #d97706; --warning-bg: #fffbeb;
-    --radius: 14px; --radius-sm: 8px; --radius-lg: 20px;
+    --border: rgba(102,19,208,0.12);
+    --success: #16a34a; --error: #dc2626;
+    --radius: 14px; --radius-sm: 9px;
   }
   html { scroll-behavior: smooth; }
   body { font-family: 'Sora', sans-serif; background: var(--surface2); color: var(--ink); min-height: 100vh; line-height: 1.6; }
@@ -55,11 +53,8 @@
   /* HEADER */
   .site-header { background: var(--black); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 62px; position: sticky; top: 0; z-index: 100; }
   .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .logo-mark { width: 34px; height: 34px; background: var(--purple); border-radius: 9px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-  .logo-mark::before { content: ''; position: absolute; width: 12px; height: 12px; background: var(--orange); border-radius: 50%; top: 4px; right: 4px; }
-  .logo-mark::after { content: 'L'; font-weight: 700; font-size: 15px; color: #fff; position: absolute; bottom: 3px; left: 8px; }
-  .logo-text { font-weight: 700; font-size: 1rem; color: #fff; letter-spacing: -0.02em; }
-  .logo-text span { color: var(--purple-mid); font-weight: 400; }
+  .logo-text { font-weight: 800; font-size: 1.05rem; color: #fff; letter-spacing: -0.03em; }
+  .logo-text span { color: #FF6B2B; font-weight: 400; }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .header-user { color: rgba(255,255,255,0.5); font-size: 0.82rem; }
   .header-btn { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 0.82rem; font-weight: 500; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; transition: all 0.2s; cursor: pointer; background: none; font-family: 'Sora', sans-serif; }
@@ -196,6 +191,7 @@
   .meus-chamados-screen { display: none; }
   .mc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
   .mc-title { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.03em; }
+  .mc-lbl { color: var(--ink3); font-weight: 600; text-transform: uppercase; font-size: 0.67rem; letter-spacing: 0.05em; }
   .btn-voltar { background: none; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 7px 14px; font-family: 'Sora', sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--ink3); cursor: pointer; transition: all 0.15s; }
   .btn-voltar:hover { background: var(--surface3); }
   .mc-list { display: flex; flex-direction: column; gap: 10px; }
@@ -306,11 +302,6 @@
 <div id="app" style="display:none;">
   <header class="site-header">
     <a href="#" class="logo">
-      <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="26" height="26" x="0" y="14" rx="4" fill="#ffffff"/>
-        <rect width="26" height="26" x="14" y="0" rx="4" fill="#F28C28"/>
-        <rect width="14" height="14" x="14" y="14" rx="2" fill="#0B0D19"/>
-      </svg>
       <span class="logo-text">Facilities <span>LogComex</span></span>
     </a>
     <div class="header-right">
@@ -898,6 +889,21 @@
         const t = d.data();
         const dt = t.data_abertura?.toDate ? t.data_abertura.toDate().toLocaleDateString('pt-BR') : '-';
         const statusClass = 'mc-' + (t.status||'').replace(' ','').replace(' ','');
+        // Info extra por tipo de chamado
+        let extraInfo = '';
+        if (t.categoria === 'logistica') {
+          let rows = '';
+          if (t.transportadora) rows += '<div><span class="mc-lbl">Transportadora</span><br><b style="color:var(--purple);">' + t.transportadora + '</b></div>';
+          if (t.destinatario) rows += '<div><span class="mc-lbl">Destinatario</span><br><b>' + t.destinatario + '</b></div>';
+          if (t.item_enviado) rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Item</span><br>' + t.item_enviado + '</div>';
+          if (t.endereco_envio && typeof t.endereco_envio === 'string') rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Endereco</span><br><span style="color:var(--ink2);">' + t.endereco_envio + '</span></div>';
+          if (t.data_envio_desejada) rows += '<div><span class="mc-lbl">Data desejada</span><br>' + t.data_envio_desejada + '</div>';
+          if (t.rastreio) rows += '<div style="grid-column:1/-1;background:rgba(102,19,208,0.06);border-radius:6px;padding:6px 8px;"><span class="mc-lbl">Codigo de Rastreio</span><br><b style="color:var(--purple);font-size:0.9rem;letter-spacing:0.08em;">' + t.rastreio + '</b></div>';
+          if (rows) extraInfo = '<div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.78rem;">' + rows + '</div>';
+        } else if (t.descricao) {
+          const desc = t.descricao.length > 120 ? t.descricao.substring(0,120) + '...' : t.descricao;
+          extraInfo = '<div style="margin-top:8px;font-size:0.8rem;color:var(--ink2);background:var(--surface2);padding:8px 12px;border-radius:8px;line-height:1.5;border-left:3px solid var(--border);">' + desc + '</div>';
+        }
         return `<div class="mc-card">
           <div class="mc-card-top">
             <div><div class="mc-id">#${t.id}</div><div class="mc-titulo">${t.titulo||''}</div></div>
@@ -909,10 +915,11 @@
             ${t.prioridade ? `<span>·</span><span>${t.prioridade}</span>` : ''}
             ${t.historico?.length > 1 ? `<span>·</span><span style="color:var(--purple);font-weight:600;">Atualizado</span>` : ''}
           </div>
-          ${t.historico?.length > 0 ? `<div style="margin-top:8px;font-size:0.78rem;color:var(--ink3);background:var(--surface2);padding:6px 10px;border-radius:6px;">Última atualização: ${t.historico[t.historico.length-1].acao}</div>` : ''}
+          ${extraInfo}
+          ${t.historico?.length > 0 ? `<div style="margin-top:8px;font-size:0.78rem;color:var(--ink3);background:var(--surface2);padding:6px 10px;border-radius:6px;">Ultima atualizacao: ${t.historico[t.historico.length-1].acao}</div>` : ''}
           ${!['Cancelado','Concluído'].includes(t.status) ? `
           <div style="margin-top:10px;">
-            <button onclick="cancelarMeuChamado('${d.id}','${t.id}')" style="background:none;border:1.5px solid #e8e4f5;border-radius:6px;padding:5px 12px;font-family:'Sora',sans-serif;font-size:0.78rem;font-weight:600;color:var(--ink3);cursor:pointer;">✕ Cancelar chamado</button>
+            <button onclick="cancelarMeuChamado('${d.id}','${t.id}')" style="background:none;border:1.5px solid #e8e4f5;border-radius:6px;padding:5px 12px;font-family:'Sora',sans-serif;font-size:0.78rem;font-weight:600;color:var(--ink3);cursor:pointer;">X Cancelar chamado</button>
           </div>` : ''}
         </div>`;
       }).join('');
