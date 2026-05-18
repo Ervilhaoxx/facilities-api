@@ -1354,8 +1354,10 @@ function renderDashboardComFiltro(tickets) {
   const ca = tickets.filter(t=>t.status==='Cancelado').length;
   const ur = tickets.filter(t=>t.prioridade==='Urgente'&&t.status!=='Concluído'&&t.status!=='Cancelado').length;
   const total = tickets.length;
-  const slaBase = co + ca;
-  const sla = slaBase > 0 ? Math.round((co / slaBase) * 100) : 0;
+  // SLA calculado pelo campo dentroSLA (fonte verdade)
+  const comSLA = tickets.filter(t => t.dentroSLA === true || t.dentroSLA === false);
+  const dentrSLA = tickets.filter(t => t.dentroSLA === true).length;
+  const sla = comSLA.length > 0 ? Math.round((dentrSLA / comSLA.length) * 100) : (co + ca > 0 ? Math.round(co/(co+ca)*100) : 0);
   document.getElementById('m-ab').textContent = ab;
   document.getElementById('m-an').textContent = an;
   document.getElementById('m-co').textContent = co;
