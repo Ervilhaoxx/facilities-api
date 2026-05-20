@@ -568,7 +568,11 @@
       <div style="padding:0 0.5rem;">
         <div class="imob-header">
           <div><div class="imob-title">Espaços e Salas</div><div style="font-size:0.82rem;color:var(--ink2);margin-top:2px;">Gerencie os espaços físicos do escritório</div></div>
-          <button class="imob-btn-add" onclick="abrirModalImob('espaco')">+ Adicionar espaço</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="imob-btn-add" onclick="abrirModalImob('espaco')">+ Adicionar espaço</button>
+            <button class="imob-btn-add" onclick="importarCSV('espacos')" style="background:var(--surface);color:var(--purple);border:1.5px solid var(--border);">⬆ Importar CSV</button>
+            <button class="imob-btn-add" onclick="exportarCSV('espacos')" style="background:var(--surface);color:var(--ink2);border:1.5px solid var(--border);">⬇ Exportar CSV</button>
+          </div>
         </div>
         <div class="imob-stats" id="stats-espacos"></div>
         <div class="imob-grid" id="grid-espacos"></div>
@@ -581,7 +585,11 @@
       <div style="padding:0 0.5rem;">
         <div class="imob-header">
           <div><div class="imob-title">Patrimônio e Equipamentos</div><div style="font-size:0.82rem;color:var(--ink2);margin-top:2px;">Controle todos os itens e equipamentos da empresa</div></div>
-          <button class="imob-btn-add" onclick="abrirModalImob('patrimonio')">+ Adicionar item</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="imob-btn-add" onclick="abrirModalImob('patrimonio')">+ Adicionar item</button>
+            <button class="imob-btn-add" onclick="importarCSV('patrimonio')" style="background:var(--surface);color:var(--purple);border:1.5px solid var(--border);">⬆ Importar CSV</button>
+            <button class="imob-btn-add" onclick="exportarCSV('patrimonio')" style="background:var(--surface);color:var(--ink2);border:1.5px solid var(--border);">⬇ Exportar CSV</button>
+          </div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
           <input id="busca-patrim" type="text" placeholder="🔍 Buscar por nome, número ou responsável..."
@@ -607,7 +615,11 @@
       <div style="padding:0 0.5rem;">
         <div class="imob-header">
           <div><div class="imob-title">Contratos de Locação</div><div style="font-size:0.82rem;color:var(--ink2);margin-top:2px;">Acompanhe contratos e vencimentos de imóveis</div></div>
-          <button class="imob-btn-add" onclick="abrirModalImob('contrato')">+ Adicionar contrato</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="imob-btn-add" onclick="abrirModalImob('contrato')">+ Adicionar contrato</button>
+            <button class="imob-btn-add" onclick="importarCSV('contratos')" style="background:var(--surface);color:var(--purple);border:1.5px solid var(--border);">⬆ Importar CSV</button>
+            <button class="imob-btn-add" onclick="exportarCSV('contratos')" style="background:var(--surface);color:var(--ink2);border:1.5px solid var(--border);">⬇ Exportar CSV</button>
+          </div>
         </div>
         <div id="alertas-contratos"></div>
         <div class="imob-stats" id="stats-contratos"></div>
@@ -616,6 +628,9 @@
     </div>
 
     <!-- ═══ MODAL ═══ -->
+    <!-- Input oculto para CSV -->
+    <input type="file" id="csv-input" accept=".csv" style="display:none;" onchange="processarCSV(event)">
+
     <div class="imob-modal" id="imob-modal">
       <div class="imob-modal-box">
         <div class="imob-modal-title" id="imob-modal-title">Adicionar</div>
@@ -2017,6 +2032,157 @@ window.renderHistorico = renderHistorico;
         carregarImob();
       }
     }
+  };
+
+  // ══════════════════════════════════════════════════════════
+  //  IMPORTAÇÃO / EXPORTAÇÃO CSV — MÓDULO IMOBILIÁRIO
+  // ══════════════════════════════════════════════════════════
+
+  // Colunas por tipo
+  const CSV_COLS = {
+    espacos:    ['nome','tipo','andar','capacidade','status','responsavel','observacoes'],
+    patrimonio: ['nome','num_patrimonio','categoria','status','responsavel','localizacao','num_serie','data_aquisicao','valor','observacoes'],
+    contratos:  ['nome','imovel','endereco','status','valor','data_inicio','data_vencimento','locador','contato_locador','observacoes'],
+  };
+
+  const CSV_LABELS = {
+    espacos: {
+      nome:'Nome do Espaço', tipo:'Tipo', andar:'Andar/Localização',
+      capacidade:'Capacidade (pessoas)', status:'Status (Disponível/Ocupado/Em manutenção/Inativo)',
+      responsavel:'Responsável', observacoes:'Observações'
+    },
+    patrimonio: {
+      nome:'Nome do Item', num_patrimonio:'Número de Patrimônio', categoria:'Categoria',
+      status:'Status (Em uso/Disponível/Em manutenção/Descartado)',
+      responsavel:'Responsável', localizacao:'Localização', num_serie:'Número de Série',
+      data_aquisicao:'Data de Aquisição (AAAA-MM-DD)', valor:'Valor (R$)', observacoes:'Observações'
+    },
+    contratos: {
+      nome:'Nome/Identificação', imovel:'Imóvel', endereco:'Endereço Completo',
+      status:'Status (Ativo/Encerrado/Em renovação/Em negociação)',
+      valor:'Valor Mensal (R$)', data_inicio:'Data de Início (AAAA-MM-DD)',
+      data_vencimento:'Data de Vencimento (AAAA-MM-DD)',
+      locador:'Locador/Proprietário', contato_locador:'Contato do Locador', observacoes:'Observações'
+    },
+  };
+
+  const CSV_EXEMPLOS = {
+    espacos: [
+      ['Sala de Reunião A','Sala de reunião','3º andar','10','Disponível','João Faria','Possui TV e quadro branco'],
+      ['Copa Principal','Copa','2º andar','','Disponível','','Microondas e geladeira'],
+      ['Almoxarifado','Almoxarifado','Térreo','','Disponível','Henrique Silva',''],
+    ],
+    patrimonio: [
+      ['Notebook Dell Latitude','001234','Notebook','Em uso','Ana Silva','Mesa 14 - 3º andar','SN123456','2024-01-15','3500,00','Carregador incluso'],
+      ['Monitor LG 24"','001235','Monitor','Em uso','Ana Silva','Mesa 14 - 3º andar','','2024-01-15','800,00',''],
+      ['Cadeira Escritório','001236','Cadeira','Disponível','','Estoque','','2023-06-10','450,00',''],
+    ],
+    contratos: [
+      ['Sede Curitiba','Edifício Alpha - Sala 301','Rua XV de Novembro, 300, Centro, Curitiba/PR, 80020-310','Ativo','8500,00','2023-01-01','2025-12-31','Imóveis Alpha Ltda','(41) 99999-9999','Reajuste anual pelo IGPM'],
+    ],
+  };
+
+  let csvTipoAtual = null;
+
+  window.importarCSV = (tipo) => {
+    csvTipoAtual = tipo;
+    const input = document.getElementById('csv-input');
+    input.value = '';
+    input.click();
+  };
+
+  window.exportarCSV = (tipo) => {
+    const cols = CSV_COLS[tipo] || [];
+    const labels = CSV_LABELS[tipo] || {};
+    const dados = imobData[tipo] || [];
+    const exemplos = CSV_EXEMPLOS[tipo] || [];
+
+    // Header com labels descritivos
+    const header = cols.map(c => labels[c] || c);
+
+    // Se não tem dados ainda, colocar exemplos comentados
+    const linhas = dados.length
+      ? dados.map(item => cols.map(c => {
+          const v = (item[c] || '').toString().replace(/"/g,'""');
+          return v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v}"` : v;
+        }).join(','))
+      : exemplos.map(ex => ex.map(v => {
+          const s = (v||'').toString().replace(/"/g,'""');
+          return s.includes(',') || s.includes('"') ? `"${s}"` : s;
+        }).join(','));
+
+    const csv = [header.join(','), ...linhas].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `template_${tipo}_facilities.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(dados.length ? `✅ ${dados.length} itens exportados!` : '✅ Template CSV baixado! Preencha e importe.');
+  };
+
+  window.processarCSV = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !csvTipoAtual) return;
+
+    const texto = await file.text();
+    const linhas = texto.trim().split(/\r?\n/);
+    if (linhas.length < 2) { showToast('❌ CSV vazio ou inválido.'); return; }
+
+    // Parsear CSV respeitando aspas
+    function parseCSVLine(line) {
+      const result = [];
+      let cur = '', inQuote = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuote = !inQuote; }
+        else if (ch === ',' && !inQuote) { result.push(cur.trim()); cur = ''; }
+        else { cur += ch; }
+      }
+      result.push(cur.trim());
+      return result;
+    }
+
+    const cols = CSV_COLS[csvTipoAtual] || [];
+    const headerLinha = parseCSVLine(linhas[0]);
+
+    // Mapear colunas do CSV para campos do sistema (por posição)
+    const itens = [];
+    for (let i = 1; i < linhas.length; i++) {
+      if (!linhas[i].trim()) continue;
+      const vals = parseCSVLine(linhas[i]);
+      if (vals.every(v => !v.trim())) continue;
+      const item = {};
+      cols.forEach((col, idx) => {
+        item[col] = (vals[idx] || '').trim();
+      });
+      // Validar: nome obrigatório
+      if (!item.nome) continue;
+      itens.push(item);
+    }
+
+    if (!itens.length) { showToast('❌ Nenhum item válido encontrado no CSV.'); return; }
+
+    const colName = 'imob_' + csvTipoAtual;
+    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    let ok = 0, err = 0;
+
+    showToast(`⏳ Importando ${itens.length} itens...`);
+
+    for (const item of itens) {
+      try {
+        await addDoc(collection(db, colName), {
+          ...item,
+          criadoEm: new Date(),
+          criadoPor: auth.currentUser?.email || 'importação CSV',
+          updatedAt: new Date(),
+        });
+        ok++;
+      } catch(e) { err++; console.error(e); }
+    }
+
+    showToast(`✅ ${ok} itens importados!${err ? ' ⚠️ ' + err + ' erros.' : ''}`);
   };
 
 </script>
