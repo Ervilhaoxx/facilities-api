@@ -979,14 +979,20 @@ function updateBadge() {
       cntEl.textContent = tickets.length;
       if (!tickets.length) { container.innerHTML = '<div class="kanban-empty">Nenhum chamado</div>'; return; }
       container.innerHTML = tickets.map(t => `
-        <div class="kanban-card" onclick="openT('${t._docId}')" style="${t.origem==='pipefy'?'border-left:3px solid #FF6B2B;':''}">
+        <div class="kanban-card" onclick="openT('${t._docId}')" style="${t.origem==='pipefy'?'border-left:3px solid #FF6B2B;':t.categoria==='logistica'?'border-left:3px solid #6613D0;':''}">
           <div class="kanban-card-id">#${t.id} ${t.origem==='pipefy'?'<span style="background:rgba(254,143,28,0.15);color:#FF6B2B;font-size:0.65rem;padding:1px 5px;border-radius:4px;font-weight:700;">📌 Pipefy</span>':''}</div>
           <div class="kanban-card-title">${t.titulo||''}</div>
+          ${t.categoria==='logistica' ? `
+          <div style="margin:5px 0;font-size:0.72rem;display:flex;flex-direction:column;gap:3px;">
+            ${t.transportadora ? `<span style="display:flex;align-items:center;gap:4px;"><span style="background:${t.transportadora==='DHL'?'#fff3cd':t.transportadora==='Uber Flash'?'#e8f8ef':'#d1e7dd'};color:${t.transportadora==='DHL'?'#856404':t.transportadora==='Uber Flash'?'#12b76a':'#0a3622'};padding:1px 7px;border-radius:10px;font-weight:700;font-size:0.68rem;">${t.transportadora}</span> <span style="color:var(--ink3);">${t.tipo_envio==='brinde'?'🎁 Brinde':t.tipo_envio==='kit'?'📦 Kit':t.tipo_envio==='outro'?'📋 Outro':'💻 Equip.'}</span></span>` : ''}
+            ${t.destinatario ? `<span style="color:var(--ink2);font-weight:500;">👤 ${t.destinatario.split(' ').slice(0,2).join(' ')}</span>` : ''}
+            ${t.item_enviado ? `<span style="color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">📦 ${t.item_enviado}</span>` : ''}
+          </div>` : `
           <div class="kanban-card-meta">
             <span class="kanban-prio kp-${t.prioridade}">${t.prioridade}</span>
             <span>${t.fase_pipefy||(CATLABELS[t.categoria]||t.tipo_pipefy||t.categoria||'').replace(/[^\w\s]/g,'').trim()}</span>
             ${t.nome ? `<span>· ${t.nome.split(' ')[0]}</span>` : ''}
-          </div>
+          </div>`}
         </div>`).join('');
     });
   }
@@ -1716,7 +1722,7 @@ function renderLogistica() {
   const tbody=document.getElementById('log-tbody');
   if(!logT.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ink3);">Nenhum envio ainda.</td></tr>';return;}
   const tc={'DHL':'background:#fff3cd;color:#856404','Correio':'background:#d1e7dd;color:#0a3622','Uber Flash':'background:#e8f8ef;color:#12b76a'};
-  tbody.innerHTML=logT.slice(0,50).map(t=>{const dt=t.data_abertura?.toDate?t.data_abertura.toDate().toLocaleDateString('pt-BR'):'-';const tr2=t.transportadora||t.subcategoria||'-';const cor2=tc[tr2]||'background:var(--surface3);color:var(--ink3)';const sc=t.status==='Concluído'?'#12b76a':t.status==='Em andamento'?'#d97706':'#6613D0';return '<tr><td style="font-weight:700;color:var(--purple);">'+(t.id||'-')+'</td><td>'+(t.tipo_envio==='kit'?'📦 Kit':'💻 Equipamento')+'</td><td><span style="padding:3px 10px;border-radius:100px;font-size:0.72rem;font-weight:700;'+cor2+'">'+tr2+'</span></td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(t.item_enviado||'')+'">'+(t.item_enviado||'-')+'</td><td>'+(t.destinatario||'-')+'</td><td>'+(t.data_envio_desejada||dt)+'</td><td><span style="color:'+sc+';font-weight:600;">'+(t.status||'Aberto')+'</span></td></tr>';}).join('');
+  tbody.innerHTML=logT.slice(0,50).map(t=>{const dt=t.data_abertura?.toDate?t.data_abertura.toDate().toLocaleDateString('pt-BR'):'-';const tr2=t.transportadora||t.subcategoria||'-';const cor2=tc[tr2]||'background:var(--surface3);color:var(--ink3)';const sc=t.status==='Concluído'?'#12b76a':t.status==='Em andamento'?'#d97706':'#6613D0';return '<tr><td style="font-weight:700;color:var(--purple);">'+(t.id||'-')+'</td><td>'+(t.tipo_envio==='kit'?'📦 Kit':t.tipo_envio==='brinde'?'🎁 Brinde':t.tipo_envio==='outro'?'📋 Outro':'💻 Equipamento')+'</td><td><span style="padding:3px 10px;border-radius:100px;font-size:0.72rem;font-weight:700;'+cor2+'">'+tr2+'</span></td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(t.item_enviado||'')+'">'+(t.item_enviado||'-')+'</td><td>'+(t.destinatario||'-')+'</td><td>'+(t.data_envio_desejada||dt)+'</td><td><span style="color:'+sc+';font-weight:600;">'+(t.status||'Aberto')+'</span></td></tr>';}).join('');
 }
 window.renderLogistica=renderLogistica;
 
