@@ -1173,20 +1173,24 @@ function onEntregaChange() {
 async function buscaCep(cep) {
   cep = cep.replace(/\D/g,'');
   if (cep.length !== 8) return;
-  // Formatar CEP no campo
   const cepInput = document.getElementById('end-cep');
   if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
   try {
     const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const d = await r.json();
     if (!d.erro) {
-      if (document.getElementById('end-rua'))      document.getElementById('end-rua').value      = d.logradouro || '';
-      if (document.getElementById('end-bairro'))   document.getElementById('end-bairro').value   = d.bairro     || '';
-      if (document.getElementById('end-cidade'))   document.getElementById('end-cidade').value   = d.localidade || '';
-      if (document.getElementById('end-estado'))   document.getElementById('end-estado').value   = d.uf         || '';
-      if (document.getElementById('end-pais'))     document.getElementById('end-pais').value     = 'Brasil';
-      // Focar no campo número após preencher
-      setTimeout(() => document.getElementById('end-numero')?.focus(), 100);
+      if (document.getElementById('end-rua'))    document.getElementById('end-rua').value    = d.logradouro || '';
+      if (document.getElementById('end-bairro')) document.getElementById('end-bairro').value = d.bairro     || '';
+      if (document.getElementById('end-cidade')) document.getElementById('end-cidade').value = d.localidade || '';
+      if (document.getElementById('end-estado')) document.getElementById('end-estado').value = d.uf         || '';
+      if (document.getElementById('end-pais'))   document.getElementById('end-pais').value   = 'Brasil';
+      if (!d.logradouro) {
+        // CEP geral de cidade — rua precisa ser preenchida manualmente
+        const ruaEl = document.getElementById('end-rua');
+        if (ruaEl) { ruaEl.placeholder = 'Digite a rua manualmente'; ruaEl.focus(); }
+      } else {
+        setTimeout(() => document.getElementById('end-numero')?.focus(), 100);
+      }
     } else {
       alert('CEP não encontrado. Verifique e tente novamente.');
     }
@@ -1316,7 +1320,6 @@ function mascaraTel(el) {
 async function buscaCepDHL(cep) {
   cep = cep.replace(/\D/g,'');
   if (cep.length !== 8) return;
-  // Formatar CEP
   const cepInput = document.getElementById('dhl-cep');
   if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
   try {
@@ -1327,10 +1330,15 @@ async function buscaCepDHL(cep) {
       document.getElementById('dhl-bairro').value  = d.bairro     || '';
       document.getElementById('dhl-cidade').value  = d.localidade || '';
       document.getElementById('dhl-estado').value  = d.uf         || '';
-      // Pais Brasil por padrão
       const paisEl = document.getElementById('dhl-pais');
       if (paisEl) paisEl.value = 'Brasil';
-      setTimeout(() => document.getElementById('dhl-numero')?.focus(), 100);
+      // Se CEP geral (sem rua), avisar e focar na rua
+      if (!d.logradouro) {
+        const ruaEl = document.getElementById('dhl-rua');
+        if (ruaEl) { ruaEl.placeholder = 'Digite a rua manualmente'; ruaEl.focus(); }
+      } else {
+        setTimeout(() => document.getElementById('dhl-numero')?.focus(), 100);
+      }
     } else {
       alert('CEP não encontrado. Verifique e tente novamente.');
     }
@@ -1339,7 +1347,6 @@ async function buscaCepDHL(cep) {
 async function buscaCepCorreio(cep) {
   cep = cep.replace(/\D/g,'');
   if (cep.length !== 8) return;
-  // Formatar CEP
   const cepInput = document.getElementById('cor-cep');
   if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
   try {
@@ -1352,7 +1359,12 @@ async function buscaCepCorreio(cep) {
       document.getElementById('cor-estado').value  = d.uf         || '';
       const paisEl = document.getElementById('cor-pais');
       if (paisEl) paisEl.value = 'Brasil';
-      setTimeout(() => document.getElementById('cor-numero')?.focus(), 100);
+      if (!d.logradouro) {
+        const ruaEl = document.getElementById('cor-rua');
+        if (ruaEl) { ruaEl.placeholder = 'Digite a rua manualmente'; ruaEl.focus(); }
+      } else {
+        setTimeout(() => document.getElementById('cor-numero')?.focus(), 100);
+      }
     } else {
       alert('CEP não encontrado. Verifique e tente novamente.');
     }
