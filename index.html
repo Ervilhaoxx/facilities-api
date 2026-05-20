@@ -1173,15 +1173,24 @@ function onEntregaChange() {
 async function buscaCep(cep) {
   cep = cep.replace(/\D/g,'');
   if (cep.length !== 8) return;
+  // Formatar CEP no campo
+  const cepInput = document.getElementById('end-cep');
+  if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
   try {
     const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const d = await r.json();
     if (!d.erro) {
-      document.getElementById('end-rua').value = d.logradouro || '';
-      document.getElementById('end-cidade').value = d.localidade || '';
-      document.getElementById('end-estado').value = d.uf || '';
+      if (document.getElementById('end-rua'))      document.getElementById('end-rua').value      = d.logradouro || '';
+      if (document.getElementById('end-bairro'))   document.getElementById('end-bairro').value   = d.bairro     || '';
+      if (document.getElementById('end-cidade'))   document.getElementById('end-cidade').value   = d.localidade || '';
+      if (document.getElementById('end-estado'))   document.getElementById('end-estado').value   = d.uf         || '';
+      if (document.getElementById('end-pais'))     document.getElementById('end-pais').value     = 'Brasil';
+      // Focar no campo número após preencher
+      setTimeout(() => document.getElementById('end-numero')?.focus(), 100);
+    } else {
+      alert('CEP não encontrado. Verifique e tente novamente.');
     }
-  } catch(e) {}
+  } catch(e) { console.error('Erro CEP:', e); }
 }
 function resetForm(){
   // Limpar TODOS os inputs, selects e textareas do formulário
@@ -1305,16 +1314,49 @@ function mascaraTel(el) {
   el.value=v;
 }
 async function buscaCepDHL(cep) {
-  cep=cep.replace(/\D/g,''); if(cep.length!==8) return;
-  try { const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/'); const d=await r.json();
-    if(!d.erro){document.getElementById('dhl-rua').value=d.logradouro||'';document.getElementById('dhl-bairro').value=d.bairro||'';document.getElementById('dhl-cidade').value=d.localidade||'';document.getElementById('dhl-estado').value=d.uf||'';}
-  } catch(e){}
+  cep = cep.replace(/\D/g,'');
+  if (cep.length !== 8) return;
+  // Formatar CEP
+  const cepInput = document.getElementById('dhl-cep');
+  if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+  try {
+    const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+    const d = await r.json();
+    if (!d.erro) {
+      document.getElementById('dhl-rua').value     = d.logradouro || '';
+      document.getElementById('dhl-bairro').value  = d.bairro     || '';
+      document.getElementById('dhl-cidade').value  = d.localidade || '';
+      document.getElementById('dhl-estado').value  = d.uf         || '';
+      // Pais Brasil por padrão
+      const paisEl = document.getElementById('dhl-pais');
+      if (paisEl) paisEl.value = 'Brasil';
+      setTimeout(() => document.getElementById('dhl-numero')?.focus(), 100);
+    } else {
+      alert('CEP não encontrado. Verifique e tente novamente.');
+    }
+  } catch(e) { console.error('Erro CEP DHL:', e); }
 }
 async function buscaCepCorreio(cep) {
-  cep=cep.replace(/\D/g,''); if(cep.length!==8) return;
-  try { const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/'); const d=await r.json();
-    if(!d.erro){document.getElementById('cor-rua').value=d.logradouro||'';document.getElementById('cor-bairro').value=d.bairro||'';document.getElementById('cor-cidade').value=d.localidade||'';document.getElementById('cor-estado').value=d.uf||'';}
-  } catch(e){}
+  cep = cep.replace(/\D/g,'');
+  if (cep.length !== 8) return;
+  // Formatar CEP
+  const cepInput = document.getElementById('cor-cep');
+  if (cepInput) cepInput.value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+  try {
+    const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+    const d = await r.json();
+    if (!d.erro) {
+      document.getElementById('cor-rua').value     = d.logradouro || '';
+      document.getElementById('cor-bairro').value  = d.bairro     || '';
+      document.getElementById('cor-cidade').value  = d.localidade || '';
+      document.getElementById('cor-estado').value  = d.uf         || '';
+      const paisEl = document.getElementById('cor-pais');
+      if (paisEl) paisEl.value = 'Brasil';
+      setTimeout(() => document.getElementById('cor-numero')?.focus(), 100);
+    } else {
+      alert('CEP não encontrado. Verifique e tente novamente.');
+    }
+  } catch(e) { console.error('Erro CEP Correio:', e); }
 }
 window.submitLogistica = async () => {
   const transpEl = document.querySelector('input[name="transportadora"]:checked');
