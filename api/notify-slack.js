@@ -134,6 +134,61 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Novo feedback → canal #compras-facilities ─────────────
+  if (tipo === 'novo_feedback') {
+    const { canal_id, tipo_feedback, assunto, texto, nome, chamado_ref, anon } = req.body;
+    if (!canal_id) return res.status(400).json({ error: 'canal_id obrigatório' });
+
+    const emoji = tipo_feedback === 'Elogio' ? '⭐' : tipo_feedback === 'Sugestão' ? '💡' : '📝';
+    const blocks = [
+      { type: 'header', text: { type: 'plain_text', text: `${emoji} Novo Feedback Recebido`, emoji: true } },
+      { type: 'divider' },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Tipo:*\n${tipo_feedback || 'Geral'}` },
+          { type: 'mrkdwn', text: `*De:*\n${nome || 'Anônimo'}` },
+          ...(assunto ? [{ type: 'mrkdwn', text: `*Assunto:*\n${assunto}` }] : []),
+          ...(chamado_ref ? [{ type: 'mrkdwn', text: `*Chamado:*\n${chamado_ref}` }] : []),
+        ]
+      },
+      ...(texto && texto !== '(Anônimo)' ? [{
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*Mensagem:*\n_${texto}_` }
+      }] : []),
+      { type: 'divider' },
+      {
+        type: 'actions',
+        elements: [{
+          type: 'button',
+          text: { type: 'plain_text', text: '📋 Ver no painel', emoji: true },
+          url: 'https://facilities-api.vercel.app/admin.html',
+          style: 'primary'
+        }]
+      },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • facilities-api.vercel.app' }] }
+    ];
+
+    try {
+      const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: canal_id,
+          username: 'Facilities LogComex',
+          icon_emoji: ':speech_balloon:',
+          text: `${emoji} Novo feedback recebido de ${nome || 'Anônimo'}`,
+          blocks
+        })
+      });
+      const msgData = await msgRes.json();
+      if (!msgData.ok) return res.status(500).json({ error: msgData.error });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // ── Demais notificações (colaborador) ──────────────────────
   const emailAlvo = solicitanteEmail || email;
   if (!emailAlvo) return res.status(400).json({ error: 'email obrigatório' });
