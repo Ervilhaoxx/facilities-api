@@ -979,16 +979,31 @@
         subcategoria: document.getElementById('subcategoria').value,
         titulo: document.getElementById('titulo').value, descricao: document.getElementById('descricao').value,
         prioridade: prio.value, data_desejada: document.getElementById('data-desejada').value,
-        plataformas: plats.join(', '), status: 'Aberto', data_abertura: serverTimestamp(),
+        plataformas: plats.join(', '),
+        status: cat === 'brindes' ? 'Aguardando aprovação' : 'Aberto',
+        data_abertura: serverTimestamp(),
         itens_brinde: itensBrinde.join(', '),
         tipo_entrega: entrega?.value || '',
         endereco_envio: enderecoEnvio,
-        historico: [{ acao: 'Chamado aberto', data: new Date().toISOString(), usuario: document.getElementById('nome').value }]
+        historico: [{ 
+          acao: cat === 'brindes' ? 'Solicitação de brinde enviada — aguardando aprovação do gestor' : 'Chamado aberto', 
+          data: new Date().toISOString(), 
+          usuario: document.getElementById('nome').value 
+        }]
       });
       document.getElementById('ticket-num').textContent = '#' + id;
       document.getElementById('form-wrapper').style.display = 'none';
       document.getElementById('category-grid').style.display = 'none';
       document.getElementById('cat-label').style.display = 'none';
+      // Mensagem especial para brindes
+      const successMsg = document.getElementById('success-msg');
+      if (successMsg) {
+        if (cat === 'brindes') {
+          successMsg.textContent = 'Sua solicitação foi enviada e está aguardando aprovação do gestor. Você será notificado pelo Slack quando aprovada.';
+        } else {
+          successMsg.textContent = 'Nossa equipe analisará em breve.';
+        }
+      }
       document.getElementById('success-screen').style.display = 'block';
     } catch(err) { alert('Erro ao salvar chamado. Tente novamente.'); }
   };
