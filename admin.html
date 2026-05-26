@@ -1211,7 +1211,7 @@ function updateBadge() {
                  t.dentroSLA === false ? '<span class="sla-badge sla-vencido">✗ Fora</span>' : '-';
         }
         if (!t.data_abertura) return '-';
-        const SLA_DIAS = {brindes:7,suprimentos:2,manutencao:15,reforma:60,seguranca:2,logistica:3,outros:7,infraestrutura:7};
+        const SLA_DIAS = {brindes:5,suprimentos:7,manutencao:60,reforma:60,seguranca:2,logistica:3,outros:7,infraestrutura:7,limpeza:7,plataformas:3,gestao:7};
         const diasSLA = SLA_DIAS[t.categoria] || 7;
         const abertura = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura);
         const diasPassados = (Date.now() - abertura.getTime()) / 86400000;
@@ -2825,7 +2825,7 @@ window.renderHistorico = renderHistorico;
           </div>
         </div>
         <div style="font-size:0.78rem;color:var(--ink3);line-height:1.5;">
-          SLA de brindes: <strong style="color:var(--ink);">7 dias úteis</strong> (2 coleta + 5 envio)<br>
+          SLA de brindes: <strong style="color:var(--ink);">5 dias úteis</strong><br>
           Aprovações analisadas: <strong style="color:var(--ink);">${countAprov}</strong>
         </div>`;
     }
