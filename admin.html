@@ -2422,7 +2422,43 @@ window.renderHistorico = renderHistorico;
       estoqueData = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
       renderEstoque();
       atualizarBadgeEstoque();
+      // Notificar Leandro no Slack se houver estoque baixo
+      verificarAlertaEstoque(estoqueData);
     });
+  }
+
+  // Controle para não disparar o mesmo alerta duas vezes seguidas
+  let _ultimoAlertaEstoque = '';
+
+  async function verificarAlertaEstoque(dados) {
+    const baixos = dados.filter(x => x.ativo !== false && x.estoque_total <= x.minimo_alerta);
+    if (!baixos.length) return;
+
+    // Criar chave única para evitar spam (só notifica se mudou)
+    const chave = baixos.map(x => x._id + ':' + x.estoque_total).join(',');
+    if (chave === _ultimoAlertaEstoque) return;
+    _ultimoAlertaEstoque = chave;
+
+    // Enviar notificação para o Leandro via Slack
+    try {
+      const res = await fetch('/api/notify-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'alerta_estoque',
+          itens_baixos: baixos.map(x => ({
+            nome: x.nome,
+            emoji: x.emoji,
+            estoque_total: x.estoque_total,
+            minimo_alerta: x.minimo_alerta
+          }))
+        })
+      });
+      const data = await res.json();
+      if (data.success) console.log('✅ Leandro notificado sobre estoque baixo!');
+    } catch(e) {
+      console.log('Erro ao notificar estoque:', e);
+    }
   }
 
   function atualizarBadgeEstoque() {
