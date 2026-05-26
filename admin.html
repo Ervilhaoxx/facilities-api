@@ -356,6 +356,7 @@
         <div class="nav-sub-item" onclick="nav('kanban',this)"><span>🗂️</span> Kanban <span class="nav-badge" id="badge-n" style="margin-left:auto;">0</span></div>
         <div class="nav-sub-item" onclick="nav('chamados',this)"><span>🎫</span> Todos os chamados</div>
         <div class="nav-sub-item" onclick="nav('feedbacks',this)"><span>💡</span> Feedbacks <span class="nav-badge" id="badge-fb" style="margin-left:auto;background:var(--purple);">0</span></div>
+        <div class="nav-sub-item" onclick="nav('estoque',this)"><span>🎁</span> Estoque Brindes <span class="nav-badge" id="badge-estoque" style="margin-left:auto;background:#b45309;display:none;">!</span></div>
         <div class="nav-sub-item" onclick="nav('relatorio',this)"><span>🤖</span> Relatório IA</div>
       </div>
     </div>
@@ -577,6 +578,37 @@
 
 
   <!-- PÁGINA HISTÓRICO PIPEFY -->
+    <!-- ═══ ESTOQUE BRINDES ═══ -->
+    <div class="page" id="page-estoque">
+      <div class="topbar"><div class="page-title">🎁 Estoque de Brindes</div></div>
+      <div style="padding:0 0.5rem;">
+
+        <!-- Alertas de estoque baixo -->
+        <div id="estoque-alertas"></div>
+
+        <!-- Stats -->
+        <div class="imob-stats" id="estoque-stats"></div>
+
+        <!-- Grid de cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:1.5rem;" id="estoque-grid">
+          <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--ink3);">Carregando...</div>
+        </div>
+
+        <!-- Modal ajuste manual -->
+        <div id="estoque-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:16px;">
+          <div style="background:var(--surface);border-radius:16px;width:100%;max-width:420px;padding:1.5rem;">
+            <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:1.2rem;" id="estoque-modal-title">Ajustar Estoque</div>
+            <div id="estoque-modal-form"></div>
+            <div style="display:flex;gap:8px;margin-top:1.2rem;justify-content:flex-end;">
+              <button onclick="fecharEstoqueModal()" style="padding:9px 20px;background:none;color:var(--ink2);border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;">Cancelar</button>
+              <button onclick="salvarEstoque()" style="padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;">Salvar</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ═══ ESPAÇOS ═══ -->
     <div class="page" id="page-imoveis">
       <div class="topbar"><div class="page-title">🏢 Espaços</div></div>
@@ -2045,6 +2077,9 @@ window.renderHistorico = renderHistorico;
     document.querySelectorAll('.nav-sub-item').forEach(x => x.classList.remove('active'));
     if (el?.classList.contains('nav-sub-item')) el.classList.add('active');
     // Abrir grupo imobiliário automaticamente
+    if (page === 'estoque') {
+      if (!estoqueData.length) carregarEstoqueAdmin();
+    }
     if (['imoveis','patrimonio','contratos'].includes(page)) {
       const items = document.getElementById('items-imoveis');
       const header = items?.previousElementSibling;
@@ -2229,6 +2264,155 @@ window.renderHistorico = renderHistorico;
     showToast(`✅ ${ok} itens importados!${err ? ' ⚠️ ' + err + ' erros.' : ''}`);
   };
 
+  // ══════════════════════════════════════════════════════════
+  //  MÓDULO ESTOQUE DE BRINDES
+  // ══════════════════════════════════════════════════════════
+  let estoqueData = [];
+  let estoqueEditId = null;
+
+  async function carregarEstoqueAdmin() {
+    const { collection, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    onSnapshot(collection(db, 'estoque_brindes'), snap => {
+      estoqueData = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+      renderEstoque();
+      atualizarBadgeEstoque();
+    });
+  }
+
+  function atualizarBadgeEstoque() {
+    const baixos = estoqueData.filter(x => x.ativo && x.estoque_total <= x.minimo_alerta);
+    const badge = document.getElementById('badge-estoque');
+    if (badge) {
+      badge.style.display = baixos.length > 0 ? 'inline-flex' : 'none';
+      badge.textContent = baixos.length;
+    }
+  }
+
+  function renderEstoque() {
+    const grid = document.getElementById('estoque-grid');
+    const alertasEl = document.getElementById('estoque-alertas');
+    const statsEl = document.getElementById('estoque-stats');
+    if (!grid) return;
+
+    const ativos = estoqueData.filter(x => x.ativo !== false);
+    const baixos = ativos.filter(x => x.estoque_total <= x.minimo_alerta && x.estoque_total > 0);
+    const esgotados = ativos.filter(x => x.estoque_total <= 0);
+    const total_itens = ativos.reduce((a, x) => a + (x.estoque_total || 0), 0);
+
+    // Stats
+    if (statsEl) {
+      statsEl.innerHTML = [
+        { n: ativos.length,    l: 'Tipos de brindes',  c: '#6613D0' },
+        { n: total_itens,      l: 'Unidades em estoque', c: '#16a34a' },
+        { n: baixos.length,    l: 'Estoque baixo',     c: '#b45309' },
+        { n: esgotados.length, l: 'Esgotados',         c: '#dc2626' },
+      ].map(s => `<div class="imob-stat"><div class="imob-stat-num" style="color:${s.c}">${s.n}</div><div class="imob-stat-label">${s.l}</div></div>`).join('');
+    }
+
+    // Alertas
+    if (alertasEl) {
+      alertasEl.innerHTML = [
+        ...esgotados.map(x => `<div class="imob-alerta" style="background:rgba(220,38,38,0.06);border-color:rgba(220,38,38,0.3);color:#dc2626;">🚨 <b>${x.nome}</b> está <b>esgotado!</b> Faça um pedido urgente.</div>`),
+        ...baixos.map(x => `<div class="imob-alerta">⚠️ <b>${x.nome}</b> com estoque baixo: apenas <b>${x.estoque_total} unidades</b> restantes. Considere fazer um pedido.</div>`),
+      ].join('');
+    }
+
+    // Cards
+    grid.innerHTML = ativos.map(item => {
+      const pct = Math.min(100, Math.round((item.estoque_total || 0) / ((item.estoque_storage || 100) + (item.estoque_sede || 0)) * 100));
+      const cor = item.estoque_total <= 0 ? '#dc2626' : item.estoque_total <= item.minimo_alerta ? '#b45309' : '#16a34a';
+      const statusTxt = item.estoque_total <= 0 ? 'Esgotado' : item.estoque_total <= item.minimo_alerta ? 'Estoque baixo' : 'Disponível';
+
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s;"
+        onclick="abrirEstoqueModal('${item._id}')"
+        onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div style="font-size:2rem;">${item.emoji}</div>
+          <span style="font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:99px;background:${item.estoque_total<=0?'rgba(220,38,38,0.1)':item.estoque_total<=item.minimo_alerta?'rgba(234,179,8,0.1)':'rgba(22,163,74,0.1)'};color:${cor};">${statusTxt}</span>
+        </div>
+        <div style="font-size:0.95rem;font-weight:700;color:var(--ink);margin-bottom:12px;">${item.nome}</div>
+        <!-- Barra de estoque -->
+        <div style="height:6px;background:var(--surface2);border-radius:3px;margin-bottom:8px;">
+          <div style="height:100%;width:${pct}%;background:${cor};border-radius:3px;transition:width .3s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--ink2);">
+          <span>📦 Storage: <b>${item.estoque_storage || 0}</b></span>
+          <span>🏢 Sede: <b>${item.estoque_sede || 0}</b></span>
+          <span style="color:${cor};font-weight:700;">Total: ${item.estoque_total || 0}</span>
+        </div>
+        <div style="margin-top:8px;font-size:0.72rem;color:var(--ink3);">Alerta abaixo de ${item.minimo_alerta} unidades</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.abrirEstoqueModal = (id) => {
+    const item = estoqueData.find(x => x._id === id);
+    if (!item) return;
+    estoqueEditId = id;
+    document.getElementById('estoque-modal-title').textContent = `✏️ Ajustar Estoque — ${item.nome}`;
+    document.getElementById('estoque-modal-form').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="imob-field">
+          <label>Estoque Storage</label>
+          <input id="est-storage" type="number" value="${item.estoque_storage || 0}" min="0">
+        </div>
+        <div class="imob-field">
+          <label>Estoque Sede</label>
+          <input id="est-sede" type="number" value="${item.estoque_sede || 0}" min="0">
+        </div>
+        <div class="imob-field">
+          <label>Alerta mínimo</label>
+          <input id="est-minimo" type="number" value="${item.minimo_alerta || 50}" min="0">
+        </div>
+        <div class="imob-field">
+          <label>Total (calculado)</label>
+          <input id="est-total" type="number" value="${(item.estoque_storage||0) + (item.estoque_sede||0)}" readonly style="background:var(--surface2);color:var(--ink3);">
+        </div>
+      </div>
+      <script>
+        document.getElementById('est-storage').addEventListener('input', () => {
+          const s = parseInt(document.getElementById('est-storage').value)||0;
+          const d = parseInt(document.getElementById('est-sede').value)||0;
+          document.getElementById('est-total').value = s + d;
+        });
+        document.getElementById('est-sede').addEventListener('input', () => {
+          const s = parseInt(document.getElementById('est-storage').value)||0;
+          const d = parseInt(document.getElementById('est-sede').value)||0;
+          document.getElementById('est-total').value = s + d;
+        });
+      <\/script>`;
+    const modal = document.getElementById('estoque-modal');
+    modal.style.display = 'flex';
+  };
+
+  window.fecharEstoqueModal = () => {
+    document.getElementById('estoque-modal').style.display = 'none';
+    estoqueEditId = null;
+  };
+
+  window.salvarEstoque = async () => {
+    if (!estoqueEditId) return;
+    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const storage = parseInt(document.getElementById('est-storage').value) || 0;
+    const sede = parseInt(document.getElementById('est-sede').value) || 0;
+    const minimo = parseInt(document.getElementById('est-minimo').value) || 50;
+    try {
+      await updateDoc(doc(db, 'estoque_brindes', estoqueEditId), {
+        estoque_storage: storage,
+        estoque_sede: sede,
+        estoque_total: storage + sede,
+        minimo_alerta: minimo,
+        updatedAt: new Date()
+      });
+      fecharEstoqueModal();
+      showToast('✅ Estoque atualizado!');
+    } catch(err) { console.error(err); showToast('Erro ao salvar.'); }
+  };
+
+  // Fechar modal ao clicar fora
+  document.getElementById('estoque-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('estoque-modal')) fecharEstoqueModal();
+  });
 </script>
 </body>
 </html>
