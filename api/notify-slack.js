@@ -140,14 +140,14 @@ export default async function handler(req, res) {
     if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
 
     try {
-      // Abrir DM com o Leandro
+      // Abrir DM com o Leandro via conversations.open
       const dmRes = await fetch('https://slack.com/api/conversations.open', {
         method: 'POST',
         headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ users: 'U019X3PFNR5' })
       });
       const dmData = await dmRes.json();
-      if (!dmData.ok) return res.status(500).json({ error: dmData.error });
+      if (!dmData.ok) return res.status(500).json({ error: `DM error: ${dmData.error}` });
 
       const temEsgotado = itens_baixos.some(x => x.estoque_total <= 0);
 
@@ -191,15 +191,13 @@ export default async function handler(req, res) {
         headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: dmData.channel.id,
-          username: 'Facilities LogComex',
-          icon_emoji: ':warning:',
           text: temEsgotado ? '🚨 Item de brinde esgotado!' : '⚠️ Estoque de brinde baixo!',
           blocks
         })
       });
       const msgData = await msgRes.json();
-      if (!msgData.ok) return res.status(500).json({ error: msgData.error });
-      return res.status(200).json({ success: true, message: 'Leandro notificado!' });
+      if (!msgData.ok) return res.status(500).json({ error: `msg error: ${msgData.error} | channel: ${dmData.channel.id}` });
+      return res.status(200).json({ success: true, message: 'Leandro notificado!', channel: dmData.channel.id });
     } catch(err) {
       return res.status(500).json({ error: err.message });
     }
