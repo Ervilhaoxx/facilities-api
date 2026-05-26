@@ -140,14 +140,8 @@ export default async function handler(req, res) {
     if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
 
     try {
-      // Abrir DM com o Leandro via conversations.open
-      const dmRes = await fetch('https://slack.com/api/conversations.open', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: 'U019X3PFNR5' })
-      });
-      const dmData = await dmRes.json();
-      if (!dmData.ok) return res.status(500).json({ error: `DM error: ${dmData.error}` });
+      // Canal DM do Leandro (fixo para garantir entrega)
+      const leandroDMChannel = 'D09SZ63NGUF';
 
       const temEsgotado = itens_baixos.some(x => x.estoque_total <= 0);
 
@@ -190,7 +184,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          channel: dmData.channel.id,
+          channel: leandroDMChannel,
           text: temEsgotado ? '🚨 Item de brinde esgotado!' : '⚠️ Estoque de brinde baixo!',
           blocks
         })
