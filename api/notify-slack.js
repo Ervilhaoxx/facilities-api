@@ -134,6 +134,77 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Alerta de estoque baixo → DM para o Leandro ─────────────
+  if (tipo === 'alerta_estoque') {
+    const { itens_baixos } = req.body;
+    if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
+
+    try {
+      // Abrir DM com o Leandro
+      const dmRes = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: 'U019X3PFNR5' })
+      });
+      const dmData = await dmRes.json();
+      if (!dmData.ok) return res.status(500).json({ error: dmData.error });
+
+      const temEsgotado = itens_baixos.some(x => x.estoque_total <= 0);
+
+      const blocks = [
+        {
+          type: 'header',
+          text: { type: 'plain_text', text: temEsgotado ? '🚨 Alerta de Estoque Esgotado!' : '⚠️ Alerta de Estoque Baixo', emoji: true }
+        },
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: `Leandro, os seguintes itens de brinde precisam de reposição:` }
+        },
+        { type: 'divider' },
+        ...itens_baixos.map(item => ({
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*${item.emoji} ${item.nome}*` },
+            { type: 'mrkdwn', text: item.estoque_total <= 0
+              ? `*Status:* 🔴 Esgotado`
+              : `*Restam:* ${item.estoque_total} unidades (mínimo: ${item.minimo_alerta})` }
+          ]
+        })),
+        { type: 'divider' },
+        {
+          type: 'actions',
+          elements: [{
+            type: 'button',
+            text: { type: 'plain_text', text: '📦 Ver Estoque no Painel', emoji: true },
+            url: 'https://facilities-api.vercel.app/admin.html',
+            style: 'primary'
+          }]
+        },
+        {
+          type: 'context',
+          elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • Estoque de Brindes' }]
+        }
+      ];
+
+      const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: dmData.channel.id,
+          username: 'Facilities LogComex',
+          icon_emoji: ':warning:',
+          text: temEsgotado ? '🚨 Item de brinde esgotado!' : '⚠️ Estoque de brinde baixo!',
+          blocks
+        })
+      });
+      const msgData = await msgRes.json();
+      if (!msgData.ok) return res.status(500).json({ error: msgData.error });
+      return res.status(200).json({ success: true, message: 'Leandro notificado!' });
+    } catch(err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // ── Novo feedback → canal #compras-facilities ─────────────
   if (tipo === 'novo_feedback') {
     const { canal_id, tipo_feedback, assunto, texto, nome, chamado_ref, anon } = req.body;
