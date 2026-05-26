@@ -202,7 +202,9 @@
   .viewer-mode #items-chamados .nav-sub-item { display: none !important; }
   .viewer-mode #items-chamados .nav-sub-item[onclick*="estoque"],
   .viewer-mode #items-chamados .nav-sub-item[onclick*="brindes-dash"] { display: flex !important; }
-  .viewer-mode .sidebar-inner > div:last-child { display: none !important; }
+  .viewer-mode .sidebar-inner > div:last-child { display: block !important; }
+  /* Esconder só o botão de sincronizar, manter formulário */
+  .viewer-mode #btn-sync-pipefy { display: none !important; }
   .viewer-mode #items-chamados::before {
     content: '🎁 Gestão de Brindes';
     display: block; font-size: 0.68rem; font-weight: 700;
