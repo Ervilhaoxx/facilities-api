@@ -497,6 +497,7 @@
 
     <div class="cat-grid" id="category-grid">
       <div class="cat-card" data-cat="manutencao" onclick="selectCat(this)"><span class="cat-icon">🔧</span><span class="cat-name">Manutenção</span></div>
+      <div class="cat-card" data-cat="reforma" onclick="selectCat(this)"><span class="cat-icon">🏗️</span><span class="cat-name">Reforma &amp; Melhoria</span></div>
       <div class="cat-card" data-cat="infraestrutura" onclick="selectCat(this)"><span class="cat-icon">🪑</span><span class="cat-name">Infraestrutura</span><span class="cat-attach-dot">📎</span></div>
       <div class="cat-card" data-cat="limpeza" onclick="selectCat(this)"><span class="cat-icon">🧹</span><span class="cat-name">Limpeza</span></div>
       <div class="cat-card" data-cat="seguranca" onclick="selectCat(this)"><span class="cat-icon">🔐</span><span class="cat-name">Segurança e Acesso</span><span class="cat-attach-dot">📎</span></div>
@@ -693,7 +694,8 @@
             <div class="field"><label>Categoria <span class="req">*</span></label>
               <select id="categoria" required onchange="onCatChange()">
                 <option value="">Selecione...</option>
-                <option value="manutencao">🔧 Manutenção</option><option value="infraestrutura">🪑 Infraestrutura</option><option value="limpeza">🧹 Limpeza e Conservação</option><option value="seguranca">🔐 Segurança e Acesso</option><option value="brindes">🎁 Gestão de Brindes</option><option value="suprimentos">📦 Suprimentos de Escritório</option><option value="plataformas">📱 Acesso a Plataformas</option>
+                <option value="manutencao">🔧 Manutenção</option>
+<option value="reforma">🏗️ Reforma & Melhoria</option><option value="infraestrutura">🪑 Infraestrutura</option><option value="limpeza">🧹 Limpeza e Conservação</option><option value="seguranca">🔐 Segurança e Acesso</option><option value="brindes">🎁 Gestão de Brindes</option><option value="suprimentos">📦 Suprimentos de Escritório</option><option value="plataformas">📱 Acesso a Plataformas</option>
               </select>
             </div>
             <div class="field"><label>Subcategoria</label><select id="subcategoria"><option value="">Selecione a categoria primeiro...</option></select></div>
@@ -1013,7 +1015,7 @@
   function loadMeusChamados() {
     const user = auth.currentUser;
     if (!user) return;
-    const CATLABELS = { manutencao:'🔧 Manutenção', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza', seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas' };
+    const CATLABELS = { manutencao:'🔧 Manutenção', reforma:'🏗️ Reforma & Melhoria', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza', seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas' };
     const q = query(collection(db, 'tickets'), where('userId', '==', user.uid), orderBy('data_abertura', 'desc'));
     unsubMeusChamados = onSnapshot(q, (snap) => {
       const list = document.getElementById('mc-list');
@@ -1207,7 +1209,8 @@
 
 <script>
 const CATS = {
-  manutencao:    { icon:'🔧', title:'Manutenção', sub:'Elétrica, hidráulica, ar condicionado e similares', attach:false },
+  manutencao:    { icon:'🔧', title:'Manutenção', sub:'Reparos: elétrica, hidráulica, ar condicionado e similares (SLA: 15 dias)', attach:false },
+  reforma:       { icon:'🏗️', title:'Reforma & Melhoria', sub:'Grandes reformas, obras e melhorias estruturais (SLA: 60 dias)', attach:false },
   infraestrutura:{ icon:'🪑', title:'Infraestrutura', sub:'Móveis, equipamentos, espaço físico', attach:true, note:'Foto do problema obrigatória', lbl:'Foto do problema *' },
   limpeza:       { icon:'🧹', title:'Limpeza e Conservação', sub:'Copa, banheiros, áreas externas e dedetização', attach:false },
   seguranca:     { icon:'🔐', title:'Segurança e Acesso', sub:'Crachás, chaves, câmeras, visitantes e prestadores', attach:true, note:'Documento de aprovação (se aplicável)', lbl:'Documento de aprovação' },
@@ -1218,6 +1221,7 @@ const CATS = {
 };
 const SUBS = {
   manutencao:['Elétrica','Hidráulica','Ar condicionado','Iluminação','Mobiliário quebrado','Outro'],
+  reforma:['Reforma de espaço','Pintura','Construção','Instalação nova','Melhoria estrutural','Outro'],
   infraestrutura:['Mesa / Cadeira','Monitor / Teclado / Mouse','Telefone','Impressora','Locker / Armário','Sala de reunião','Outro'],
   limpeza:['Limpeza geral','Copa / Cozinha','Banheiro','Área externa','Dedetização','Outro'],
   seguranca:['Crachá de acesso','Chave-armário','CFTV / Câmera','Visitante / Prestador','Controle remoto','Outro'],
