@@ -145,15 +145,19 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              tipo: 'mudanca_fase_colaborador',
+              tipo: 'mudanca_status_colaborador',
               ticket: docId,
               ticketId: docId,
               titulo: docData.titulo,
+              categoria: docData.tipo_pipefy || docData.categoria,
               solicitanteEmail: emailColab,
               solicitanteNome: emailColab.split('@')[0],
               faseAnterior,
               faseAtual: faseNome,
               statusAtual: status,
+              statusAnterior,
+              dataAbertura: docData.data_abertura ? docData.data_abertura.toISOString?.() || docData.data_abertura : null,
+              origem: 'pipefy',
             })
           }).catch(err => console.error('Erro notif colaborador:', err));
         }
