@@ -1140,9 +1140,22 @@
         }
       }
       document.getElementById('success-screen').style.display = 'block';
-      // Notificar gestor no Slack quando for brinde
+      // Notificar admin (joao.faria) de qualquer novo chamado
+      fetch('/api/notify-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'novo_chamado_admin',
+          ticket: id,
+          ticketId: id,
+          titulo: document.getElementById('titulo').value,
+          categoria: cat,
+          solicitanteEmail: document.getElementById('email').value,
+          solicitanteNome: document.getElementById('nome').value,
+        })
+      }).catch(err => console.log('Slack admin notif error:', err));
+      // Notificar gestor (Leandro) no Slack quando for brinde — fluxo de aprovação
       if (cat === 'brindes') {
-        const docRef = await addDoc(collection(db, 'tickets'), {}); // já foi salvo acima, pegar o docId
         // Chamar API para notificar o Leandro
         fetch('/api/notify-slack', {
           method: 'POST',
@@ -1615,6 +1628,20 @@ window.submitLogistica = async () => {
     ['logistica-form','form-wrapper','category-grid','cat-label'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
     document.getElementById('success-screen').style.display = 'block';
     document.getElementById('success-screen').scrollIntoView({behavior:'smooth', block:'start'});
+    // Notificar admin (joao.faria) do novo chamado de logística
+    fetch('/api/notify-slack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: 'novo_chamado_admin',
+        ticket: id,
+        ticketId: id,
+        titulo: 'Envio ' + document.getElementById('log-tipo-envio').value + ' via ' + transp,
+        categoria: 'logistica',
+        solicitanteEmail: document.getElementById('email').value,
+        solicitanteNome: document.getElementById('nome').value,
+      })
+    }).catch(err => console.log('Slack admin notif error:', err));
   } catch(err) { console.error(err); alert('Erro ao salvar. Tente novamente. ' + err.message); }
 };
 
