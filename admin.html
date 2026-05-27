@@ -871,6 +871,10 @@
       <div class="modal-section">Adicionar comentário</div>
       <div class="comment-box">
         <textarea id="cmt-text" placeholder="Atualizações, observações, próximos passos..."></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:0.85rem;color:var(--ink2);cursor:pointer;user-select:none;">
+          <input type="checkbox" id="cmt-notify" style="width:16px;height:16px;cursor:pointer;accent-color:var(--purple);">
+          <span>📨 Notificar colaborador no Slack com este comentário</span>
+        </label>
         <button class="comment-save" onclick="saveCmt()">Salvar comentário</button>
       </div>
       <div class="modal-section" style="margin-top:1.2rem;">Histórico</div>
@@ -1001,17 +1005,62 @@ const isAdminOrViewer = (email) => {
 
     window.doLogout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
-    // ── Atualiza status + dispara Slack se Concluído ──
+    // ── Atualiza status + dispara Slack rico com observação opcional ──
     window.updS = async (s) => {
       if (!currentDocId) return;
       const t = allTickets.find(x => x._docId === currentDocId);
       if (!t || t.status === s) return;
+      const statusAnterior = t.status;
+
+      // Pergunta observação opcional (label varia por status)
+      const labelObs = s === 'Cancelado'
+        ? 'Motivo do cancelamento (opcional — será enviado ao colaborador):'
+        : s === 'Concluído'
+        ? 'Observação de conclusão (opcional — será enviada ao colaborador):'
+        : `Observação para o colaborador (opcional — status: ${s}):`;
+      const observacao = prompt(labelObs, '') ?? '';
+      // prompt retorna null se cancelar → aborta tudo
+      if (observacao === null) return;
+
       const hist = [...(t.historico || [])];
-      hist.push({ acao: `Status: ${t.status} → ${s}`, data: new Date().toISOString(), usuario: user.email });
-      await updateDoc(doc(db, 'tickets', currentDocId), { status: s, historico: hist });
+      const histAcao = observacao
+        ? `Status: ${statusAnterior} → ${s} | 💬 ${observacao}`
+        : `Status: ${statusAnterior} → ${s}`;
+      hist.push({ acao: histAcao, data: new Date().toISOString(), usuario: user.email });
+
+      const updates = { status: s, historico: hist };
+      if (observacao) updates.ultima_observacao = observacao;
+      if (s === 'Cancelado' && observacao) updates.motivo_cancelamento = observacao;
+      await updateDoc(doc(db, 'tickets', currentDocId), updates);
       document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active-s', b.textContent === s));
-      showToast('Status atualizado: ' + s);
-      if (s === 'Concluído') notificarSlackConcluido(t);
+
+      // Notifica colaborador (DM rica) — exceto se for brinde indo pra "Aguardando aprovação"
+      // (esse fluxo já é tratado pelo gestor/Leandro)
+      if (t.email && !(t.categoria === 'brindes' && s === 'Aguardando aprovação')) {
+        const dataAbertura = t.data_abertura
+          ? (t.data_abertura.toDate ? t.data_abertura.toDate().toISOString() : t.data_abertura)
+          : null;
+        fetch('/api/notify-slack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: 'mudanca_status_colaborador',
+            ticket: t.id,
+            ticketId: t.id,
+            titulo: t.titulo,
+            categoria: CATLABELS[t.categoria] || t.categoria,
+            solicitanteEmail: t.email,
+            solicitanteNome: t.nome,
+            statusAtual: s,
+            statusAnterior,
+            observacao,
+            dataAbertura,
+            origem: 'admin',
+          })
+        }).catch(err => console.log('Erro Slack:', err));
+      }
+
+      showToast('Status atualizado: ' + s + (t.email ? ' • Colaborador notificado' : ''));
     };
     // ─────────────────────────────────────────────────
 
@@ -1022,9 +1071,37 @@ const isAdminOrViewer = (email) => {
       const hist = [...(t?.historico || [])];
       hist.push({ acao: '💬 ' + txt, data: new Date().toISOString(), usuario: user.email });
       await updateDoc(doc(db, 'tickets', currentDocId), { historico: hist });
+
+      // Verifica se admin marcou pra notificar colaborador
+      const notifChk = document.getElementById('cmt-notify');
+      const deveNotificar = notifChk?.checked && t?.email;
+      if (deveNotificar) {
+        const dataAbertura = t.data_abertura
+          ? (t.data_abertura.toDate ? t.data_abertura.toDate().toISOString() : t.data_abertura)
+          : null;
+        fetch('/api/notify-slack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: 'comentario_colaborador',
+            ticket: t.id,
+            ticketId: t.id,
+            titulo: t.titulo,
+            categoria: CATLABELS[t.categoria] || t.categoria,
+            solicitanteEmail: t.email,
+            solicitanteNome: t.nome,
+            statusAtual: t.status,
+            observacao: txt,
+            dataAbertura,
+            origem: 'admin',
+          })
+        }).catch(err => console.log('Erro Slack:', err));
+      }
+
       document.getElementById('cmt-text').value = '';
+      if (notifChk) notifChk.checked = false; // reset checkbox
       renderHist(hist);
-      showToast('Comentário salvo!');
+      showToast(deveNotificar ? 'Comentário salvo e colaborador notificado!' : 'Comentário salvo!');
     };
 
     window.excluirChamado = async () => {
