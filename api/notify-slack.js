@@ -264,13 +264,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Mudança de fase → DM para o colaborador ─────────────────
-  if (tipo === 'mudanca_fase_colaborador') {
-    const { faseAnterior, faseAtual, statusAtual } = req.body;
+  // ── Mudança de status / observação → DM rica para o colaborador ─────
+  if (tipo === 'mudanca_status_colaborador' || tipo === 'comentario_colaborador') {
+    const {
+      statusAtual, statusAnterior, observacao, motivo,
+      faseAnterior, faseAtual, dataAbertura: dtAbertura,
+      origem // 'admin' | 'pipefy'
+    } = req.body;
     const emailAlvo = solicitanteEmail || emailColaborador || email;
     if (!emailAlvo) return res.status(400).json({ error: 'email do colaborador obrigatório' });
     const nomeAlvo = solicitanteNome || nomeColaborador || nome || emailAlvo.split('@')[0];
     const ticketNum = ticket || ticketId || '—';
+    const obsTxt = observacao || motivo || '';
+    const categoriaTxt = categoria || '—';
 
     try {
       // Buscar usuário no Slack pelo email
@@ -293,15 +299,70 @@ export default async function handler(req, res) {
       if (!dmData.ok) return res.status(500).json({ error: `Erro ao abrir DM: ${dmData.error}` });
       const channelId = dmData.channel.id;
 
-      // Emoji por status
-      const statusEmoji = {
-        'Aberto': '🔵',
-        'Aguardando aprovação': '🟡',
-        'Em andamento': '🟠',
-        'Aguardando fornecedor': '🟣',
-        'Concluído': '🟢',
-        'Cancelado': '⚫'
-      }[statusAtual] || '⚪';
+      // ── Configuração visual por status ────────────────────
+      const cfg = {
+        'Aberto':                 { emoji: '🔵', icon: ':large_blue_circle:',   headline: '🔵 Chamado registrado',       msg: `Olá, *${nomeAlvo}*! Recebemos seu chamado e ele já está na fila de atendimento. 📥` },
+        'Aguardando aprovação':   { emoji: '🟡', icon: ':large_yellow_circle:', headline: '🟡 Aguardando aprovação',     msg: `Olá, *${nomeAlvo}*! Seu chamado está aguardando aprovação do gestor. ⏳` },
+        'Em andamento':           { emoji: '🟠', icon: ':large_orange_circle:', headline: '🟠 Estamos cuidando do seu chamado', msg: `Olá, *${nomeAlvo}*! O time de Facilities já está trabalhando no seu chamado. 🛠️` },
+        'Aguardando fornecedor':  { emoji: '🟣', icon: ':large_purple_circle:', headline: '🟣 Aguardando fornecedor',    msg: `Olá, *${nomeAlvo}*! Seu chamado está aguardando retorno do fornecedor. 📦` },
+        'Concluído':              { emoji: '🟢', icon: ':white_check_mark:',    headline: '✅ Chamado concluído!',       msg: `Olá, *${nomeAlvo}*! Seu chamado foi *resolvido* pelo time de Facilities. 🎉` },
+        'Cancelado':              { emoji: '⚫', icon: ':no_entry:',            headline: '⛔ Chamado cancelado',        msg: `Olá, *${nomeAlvo}*. Seu chamado foi *cancelado*.` },
+      }[statusAtual] || { emoji: '⚪', icon: ':arrows_counterclockwise:', headline: '🔄 Atualização do seu chamado', msg: `Olá, *${nomeAlvo}*! Seu chamado teve uma atualização.` };
+
+      // ── Data formatada ───────────────────────────────────
+      let dataFormatada = '—';
+      try {
+        if (dtAbertura) {
+          const d = new Date(dtAbertura);
+          if (!isNaN(d)) dataFormatada = d.toLocaleDateString('pt-BR');
+        }
+      } catch {}
+
+      // ── Bloco de observação destacado ────────────────────
+      const tipoLabel = tipo === 'comentario_colaborador'
+        ? '💬 Comentário do time'
+        : (statusAtual === 'Cancelado' ? '⚠️ Motivo' : '💬 Observação do time');
+
+      const observacaoBlock = obsTxt ? [
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*${tipoLabel}:*\n>${obsTxt.replace(/\n/g, '\n>')}` }
+        }
+      ] : [];
+
+      // ── Botão (avaliar atendimento se concluído, ver detalhes nos outros) ──
+      const feedbackUrl = `https://facilities-api.vercel.app/?feedback=${encodeURIComponent(ticketNum)}`;
+      const ctaBlocks = statusAtual === 'Concluído' ? [
+        { type: 'divider' },
+        { type: 'section', text: { type: 'mrkdwn', text: '💬 *Como foi o atendimento?*' } },
+        {
+          type: 'actions',
+          elements: [{
+            type: 'button',
+            text: { type: 'plain_text', text: '⭐ Avaliar atendimento', emoji: true },
+            url: feedbackUrl,
+            style: 'primary'
+          }]
+        }
+      ] : [
+        { type: 'divider' },
+        {
+          type: 'actions',
+          elements: [{
+            type: 'button',
+            text: { type: 'plain_text', text: '📋 Ver detalhes', emoji: true },
+            url: 'https://facilities-api.vercel.app/index.html',
+            style: 'primary'
+          }]
+        }
+      ];
+
+      // ── Linha de transição (se houver) ───────────────────
+      const transicaoBlock = (statusAnterior && statusAtual && statusAnterior !== statusAtual) ? [
+        { type: 'context', elements: [{ type: 'mrkdwn', text: `↩️ Status anterior: _${statusAnterior}_ → *${statusAtual}*` }] }
+      ] : ((faseAnterior && faseAtual && faseAnterior !== faseAtual) ? [
+        { type: 'context', elements: [{ type: 'mrkdwn', text: `↩️ Fase: _${faseAnterior}_ → *${faseAtual}*` }] }
+      ] : []);
 
       const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
@@ -309,35 +370,26 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           channel: channelId,
           username: 'Facilities LogComex',
-          icon_emoji: ':arrows_counterclockwise:',
-          text: `🔄 Seu chamado ${ticketNum} mudou de fase`,
+          icon_emoji: cfg.icon,
+          text: `${cfg.emoji} Atualização do chamado ${ticketNum}`,
           blocks: [
-            { type: 'header', text: { type: 'plain_text', text: '🔄 Atualização do seu chamado', emoji: true } },
-            { type: 'section', text: { type: 'mrkdwn', text: `Olá, *${nomeAlvo}*! Seu chamado teve uma atualização de fase.` } },
+            { type: 'header', text: { type: 'plain_text', text: cfg.headline, emoji: true } },
+            { type: 'section', text: { type: 'mrkdwn', text: cfg.msg } },
             { type: 'divider' },
             {
               type: 'section',
               fields: [
                 { type: 'mrkdwn', text: `*Chamado:*\n${ticketNum}` },
-                { type: 'mrkdwn', text: `*Status:*\n${statusEmoji} ${statusAtual || '—'}` },
+                { type: 'mrkdwn', text: `*Status:*\n${cfg.emoji} ${statusAtual || '—'}` },
+                ...(categoria ? [{ type: 'mrkdwn', text: `*Categoria:*\n${categoriaTxt}` }] : []),
                 ...(titulo ? [{ type: 'mrkdwn', text: `*Solicitação:*\n${titulo}` }] : []),
-                ...(faseAtual ? [{ type: 'mrkdwn', text: `*Fase atual:*\n${faseAtual}` }] : []),
+                ...(dataFormatada !== '—' ? [{ type: 'mrkdwn', text: `*Aberto em:*\n${dataFormatada}` }] : []),
+                ...(faseAtual ? [{ type: 'mrkdwn', text: `*Fase Pipefy:*\n${faseAtual}` }] : []),
               ]
             },
-            ...(faseAnterior && faseAtual ? [{
-              type: 'context',
-              elements: [{ type: 'mrkdwn', text: `↩️ ${faseAnterior} → *${faseAtual}*` }]
-            }] : []),
-            { type: 'divider' },
-            {
-              type: 'actions',
-              elements: [{
-                type: 'button',
-                text: { type: 'plain_text', text: '📋 Ver detalhes', emoji: true },
-                url: 'https://facilities-api.vercel.app/index.html',
-                style: 'primary'
-              }]
-            },
+            ...observacaoBlock,
+            ...transicaoBlock,
+            ...ctaBlocks,
             { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • facilities-api.vercel.app' }] }
           ]
         })
@@ -347,7 +399,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Colaborador notificado!' });
 
     } catch (err) {
-      console.error('Erro mudanca_fase_colaborador:', err);
+      console.error('Erro mudanca_status_colaborador:', err);
       return res.status(500).json({ error: err.message });
     }
   }
