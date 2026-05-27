@@ -197,6 +197,161 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Novo chamado → DM para o admin (joao.faria) ─────────────
+  if (tipo === 'novo_chamado_admin') {
+    // Slack User ID fixo do João (admin principal)
+    const ADMIN_SLACK_ID = 'U09MEN4BS0N';
+
+    try {
+      // Abrir DM com o admin
+      const dmRes = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: ADMIN_SLACK_ID })
+      });
+      const dmData = await dmRes.json();
+      if (!dmData.ok) return res.status(500).json({ error: `Erro ao abrir DM admin: ${dmData.error}` });
+      const channelId = dmData.channel.id;
+
+      const ticketNum = ticket || ticketId || '—';
+      const nomeColab = solicitanteNome || nomeColaborador || nome || '—';
+      const emailColab = solicitanteEmail || emailColaborador || email || '—';
+      const categoriaTxt = categoria || '—';
+
+      const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: channelId,
+          username: 'Facilities LogComex',
+          icon_emoji: ':bell:',
+          text: `🆕 Nova solicitação Facilities — ${ticketNum}`,
+          blocks: [
+            { type: 'header', text: { type: 'plain_text', text: '🆕 Nova Solicitação Facilities', emoji: true } },
+            { type: 'section', text: { type: 'mrkdwn', text: `Olá, João! Acaba de chegar uma nova solicitação de Facilities.` } },
+            { type: 'divider' },
+            {
+              type: 'section',
+              fields: [
+                { type: 'mrkdwn', text: `*Chamado:*\n${ticketNum}` },
+                { type: 'mrkdwn', text: `*Categoria:*\n${categoriaTxt}` },
+                { type: 'mrkdwn', text: `*Solicitante:*\n${nomeColab}` },
+                { type: 'mrkdwn', text: `*E-mail:*\n${emailColab}` },
+                ...(titulo ? [{ type: 'mrkdwn', text: `*Solicitação:*\n${titulo}` }] : []),
+              ]
+            },
+            { type: 'divider' },
+            {
+              type: 'actions',
+              elements: [{
+                type: 'button',
+                text: { type: 'plain_text', text: '📋 Ver detalhes', emoji: true },
+                url: 'https://facilities-api.vercel.app/admin.html',
+                style: 'primary'
+              }]
+            },
+            { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • facilities-api.vercel.app' }] }
+          ]
+        })
+      });
+      const msgData = await msgRes.json();
+      if (!msgData.ok) return res.status(500).json({ error: `Erro ao enviar para admin: ${msgData.error}` });
+      return res.status(200).json({ success: true, message: 'Admin notificado!' });
+
+    } catch (err) {
+      console.error('Erro novo_chamado_admin:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── Mudança de fase → DM para o colaborador ─────────────────
+  if (tipo === 'mudanca_fase_colaborador') {
+    const { faseAnterior, faseAtual, statusAtual } = req.body;
+    const emailAlvo = solicitanteEmail || emailColaborador || email;
+    if (!emailAlvo) return res.status(400).json({ error: 'email do colaborador obrigatório' });
+    const nomeAlvo = solicitanteNome || nomeColaborador || nome || emailAlvo.split('@')[0];
+    const ticketNum = ticket || ticketId || '—';
+
+    try {
+      // Buscar usuário no Slack pelo email
+      const userRes = await fetch(
+        `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(emailAlvo)}`,
+        { headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}` } }
+      );
+      const userData = await userRes.json();
+      if (!userData.ok) {
+        console.log('Colaborador não encontrado no Slack:', emailAlvo, userData.error);
+        return res.status(200).json({ warning: 'Colaborador não encontrado no Slack' });
+      }
+
+      const dmRes = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: userData.user.id })
+      });
+      const dmData = await dmRes.json();
+      if (!dmData.ok) return res.status(500).json({ error: `Erro ao abrir DM: ${dmData.error}` });
+      const channelId = dmData.channel.id;
+
+      // Emoji por status
+      const statusEmoji = {
+        'Aberto': '🔵',
+        'Aguardando aprovação': '🟡',
+        'Em andamento': '🟠',
+        'Aguardando fornecedor': '🟣',
+        'Concluído': '🟢',
+        'Cancelado': '⚫'
+      }[statusAtual] || '⚪';
+
+      const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: channelId,
+          username: 'Facilities LogComex',
+          icon_emoji: ':arrows_counterclockwise:',
+          text: `🔄 Seu chamado ${ticketNum} mudou de fase`,
+          blocks: [
+            { type: 'header', text: { type: 'plain_text', text: '🔄 Atualização do seu chamado', emoji: true } },
+            { type: 'section', text: { type: 'mrkdwn', text: `Olá, *${nomeAlvo}*! Seu chamado teve uma atualização de fase.` } },
+            { type: 'divider' },
+            {
+              type: 'section',
+              fields: [
+                { type: 'mrkdwn', text: `*Chamado:*\n${ticketNum}` },
+                { type: 'mrkdwn', text: `*Status:*\n${statusEmoji} ${statusAtual || '—'}` },
+                ...(titulo ? [{ type: 'mrkdwn', text: `*Solicitação:*\n${titulo}` }] : []),
+                ...(faseAtual ? [{ type: 'mrkdwn', text: `*Fase atual:*\n${faseAtual}` }] : []),
+              ]
+            },
+            ...(faseAnterior && faseAtual ? [{
+              type: 'context',
+              elements: [{ type: 'mrkdwn', text: `↩️ ${faseAnterior} → *${faseAtual}*` }]
+            }] : []),
+            { type: 'divider' },
+            {
+              type: 'actions',
+              elements: [{
+                type: 'button',
+                text: { type: 'plain_text', text: '📋 Ver detalhes', emoji: true },
+                url: 'https://facilities-api.vercel.app/index.html',
+                style: 'primary'
+              }]
+            },
+            { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • facilities-api.vercel.app' }] }
+          ]
+        })
+      });
+      const msgData = await msgRes.json();
+      if (!msgData.ok) return res.status(500).json({ error: `Erro ao enviar: ${msgData.error}` });
+      return res.status(200).json({ success: true, message: 'Colaborador notificado!' });
+
+    } catch (err) {
+      console.error('Erro mudanca_fase_colaborador:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // ── Novo feedback → canal #compras-facilities ─────────────
   if (tipo === 'novo_feedback') {
     const { canal_id, tipo_feedback, assunto, texto, nome, chamado_ref, anon } = req.body;
