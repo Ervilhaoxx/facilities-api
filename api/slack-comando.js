@@ -483,23 +483,34 @@ module.exports = async function handler(req, res) {
     return res.status(401).send('Invalid signature');
   }
 
-  // Parser manual (já temos o rawBody)
+  // Parser do body — pode ser JSON puro (Events API) ou x-www-form-urlencoded (interactivity/commands)
   let body = {};
+  const contentType = (req.headers['content-type'] || '').toLowerCase();
   try {
-    // Tenta parsear como x-www-form-urlencoded
-    const params = {};
-    rawBody.split('&').forEach(pair => {
-      const [k, v] = pair.split('=');
-      if (k) params[decodeURIComponent(k.replace(/\+/g, ' '))] = decodeURIComponent((v || '').replace(/\+/g, ' '));
-    });
-    if (params.payload) {
-      try { body = JSON.parse(params.payload); } catch { body = params; }
+    if (contentType.includes('application/json')) {
+      // Events API manda JSON puro
+      body = JSON.parse(rawBody);
     } else {
-      body = params;
+      // Slash commands e interactivity vêm como form-urlencoded
+      const params = {};
+      rawBody.split('&').forEach(pair => {
+        const [k, v] = pair.split('=');
+        if (k) params[decodeURIComponent(k.replace(/\+/g, ' '))] = decodeURIComponent((v || '').replace(/\+/g, ' '));
+      });
+      if (params.payload) {
+        try { body = JSON.parse(params.payload); } catch { body = params; }
+      } else {
+        body = params;
+      }
     }
   } catch (e) {
-    console.error('Erro ao parsear body:', e);
-    return res.status(400).send('Bad body');
+    // Fallback: tenta JSON
+    try { body = JSON.parse(rawBody); } catch { body = {}; }
+  }
+
+  // ⚡ url_verification deve ser respondido IMEDIATAMENTE, antes de qualquer outra lógica
+  if (body.type === 'url_verification') {
+    return res.status(200).json({ challenge: body.challenge });
   }
 
   // ============================================================
