@@ -660,6 +660,30 @@ module.exports = async function handler(req, res) {
   }
 
   // ============================================================
+  // ROTA 5: block_actions (cliques em botões — atualmente usado para aprovação de brindes)
+  //         Repassa internamente para o endpoint /api/brinde-aprovacao (mantém compatibilidade)
+  // ============================================================
+  if (body.type === 'block_actions') {
+    const actionId = body.actions?.[0]?.action_id || '';
+    if (actionId === 'aprovar_brinde' || actionId === 'recusar_brinde' || actionId.startsWith('aprovar_') || actionId.startsWith('recusar_')) {
+      try {
+        const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://facilities-api.vercel.app';
+        // Reencaminha o payload original (form-urlencoded) pro endpoint legacy
+        await fetch(`${baseUrl}/api/brinde-aprovacao`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: rawBody,
+        });
+      } catch (e) {
+        console.error('Erro repassando p/ brinde-aprovacao:', e.message);
+      }
+      return res.status(200).send('');
+    }
+    // Outros block_actions futuros podem ser tratados aqui
+    return res.status(200).send('');
+  }
+
+  // ============================================================
   // Fallback: nada reconhecido
   // ============================================================
   console.warn('Payload Slack não reconhecido:', body.type || body.command || 'unknown');
