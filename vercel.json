@@ -9,6 +9,9 @@
     },
     "api/recalcular-sla.js": {
       "maxDuration": 60
+    },
+    "api/diagnostico-sla.js": {
+      "maxDuration": 30
     }
   }
 }
