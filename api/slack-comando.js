@@ -721,21 +721,6 @@ module.exports = async function handler(req, res) {
     const evt = body.event;
     const eventId = body.event_id;
 
-    // LOG persistente no Firestore pra debug
-    try {
-      await db.collection('slack_debug_logs').add({
-        at: new Date(),
-        type: evt.type,
-        channel_type: evt.channel_type,
-        user: evt.user,
-        text: (evt.text || '').substring(0, 200),
-        event_id: eventId,
-        has_channel: !!evt.channel,
-        bot_id: evt.bot_id || null,
-        subtype: evt.subtype || null,
-      });
-    } catch (e) { console.error('log fail:', e.message); }
-
     // Filtros básicos
     if (evt.type !== 'message') return res.status(200).send('');
     if (evt.bot_id || evt.subtype === 'bot_message' || evt.subtype === 'message_changed' || evt.subtype === 'message_deleted') {
@@ -744,7 +729,7 @@ module.exports = async function handler(req, res) {
     if (evt.channel_type !== 'im') return res.status(200).send('');
     if (!evt.text || !evt.user || !evt.channel) return res.status(200).send('');
 
-    // Dedup
+    // Dedup (Slack pode retentar se demorar >3s)
     if (eventId) {
       try {
         const dedupeDoc = db.collection('slack_eventos_processados').doc(eventId);
@@ -754,15 +739,14 @@ module.exports = async function handler(req, res) {
       } catch (e) { console.warn('dedup:', e.message); }
     }
 
-    // RESPONDE AO SLACK IMEDIATAMENTE — não bloqueia
+    // RESPONDE AO SLACK IMEDIATAMENTE
     res.status(200).send('');
 
-    // Processa depois (Vercel mantém o handler vivo até await terminar)
+    // Processa em background (Vercel mantém o handler vivo até await terminar)
     try {
       await processarMensagemDM(evt);
-      await db.collection('slack_debug_logs').add({ at: new Date(), evento: 'processado_ok', user: evt.user });
     } catch (err) {
-      await db.collection('slack_debug_logs').add({ at: new Date(), evento: 'erro', erro: err.message, stack: err.stack?.substring(0, 500), user: evt.user });
+      console.error('Erro processando DM:', err.message);
     }
     return;
   }
