@@ -626,6 +626,32 @@
           </div>
         </div>
 
+        <!-- Modal envio de alerta consolidado -->
+        <div id="alerta-estoque-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:16px;">
+          <div style="background:var(--surface);border-radius:16px;width:100%;max-width:520px;padding:1.5rem;max-height:90vh;overflow-y:auto;">
+            <div style="font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+              📨 Enviar alerta ao Leandro
+            </div>
+            <div style="font-size:0.8rem;color:var(--ink2);margin-bottom:1rem;">
+              <span id="alerta-estoque-resumo"></span> · Ele receberá uma DM única no Slack.
+            </div>
+
+            <div style="background:var(--surface2);border-radius:8px;padding:8px 14px;margin-bottom:1rem;max-height:200px;overflow-y:auto;" id="alerta-estoque-lista"></div>
+
+            <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--ink2);margin-bottom:6px;">
+              Mensagem adicional <span style="font-weight:400;color:var(--ink3);">(opcional)</span>
+            </label>
+            <textarea id="alerta-estoque-msg" placeholder="Ex: Preciso até sexta para o evento de integração, ou: Pode programar pra próxima semana, sem urgência."
+              style="width:100%;min-height:80px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;resize:vertical;background:var(--surface2);color:var(--ink);"></textarea>
+            <div style="font-size:0.72rem;color:var(--ink3);margin-top:4px;">Esta mensagem aparecerá destacada na DM do Leandro.</div>
+
+            <div style="display:flex;gap:8px;margin-top:1.3rem;justify-content:flex-end;">
+              <button onclick="fecharAlertaEstoqueModal()" style="padding:10px 20px;background:none;color:var(--ink2);border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;">Cancelar</button>
+              <button id="btn-confirmar-alerta" onclick="confirmarEnvioAlertaEstoque()" style="padding:10px 20px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;">📨 Enviar agora</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -2529,15 +2555,49 @@ window.renderHistorico = renderHistorico;
     const baixos = estoqueData.filter(x => x.ativo !== false && x.estoque_total <= x.minimo_alerta);
     if (!baixos.length) { showToast('Nenhum item com estoque baixo no momento.'); return; }
 
+    // Abre modal de confirmação com mensagem opcional
+    abrirAlertaEstoqueModal(baixos);
+  };
+
+  function abrirAlertaEstoqueModal(baixos) {
     const total = baixos.length;
     const esgotadosN = baixos.filter(x => x.estoque_total <= 0).length;
     const resumo = esgotadosN
       ? `${total} item(ns) — ${esgotadosN} esgotado(s)`
       : `${total} item(ns) com estoque baixo`;
-    if (!confirm(`Enviar alerta consolidado ao Leandro?\n\n📦 ${resumo}\n\nEle receberá uma DM única no Slack com todos os itens listados.`)) return;
 
+    const lista = baixos.map(x => {
+      const isEsg = x.estoque_total <= 0;
+      const cor = isEsg ? '#dc2626' : '#b45309';
+      const txt = isEsg ? 'Esgotado' : `${x.estoque_total} un. (mín: ${x.minimo_alerta})`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:0.85rem;border-bottom:1px solid var(--border);">
+        <span style="font-size:1.1rem;">${x.emoji || '📦'}</span>
+        <span style="flex:1;color:var(--ink);font-weight:600;">${x.nome}</span>
+        <span style="color:${cor};font-weight:700;font-size:0.78rem;">${txt}</span>
+      </div>`;
+    }).join('');
+
+    const modal = document.getElementById('alerta-estoque-modal');
+    document.getElementById('alerta-estoque-resumo').textContent = resumo;
+    document.getElementById('alerta-estoque-lista').innerHTML = lista;
+    document.getElementById('alerta-estoque-msg').value = '';
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('alerta-estoque-msg').focus(), 100);
+  }
+
+  window.fecharAlertaEstoqueModal = function() {
+    const m = document.getElementById('alerta-estoque-modal');
+    if (m) m.style.display = 'none';
+  };
+
+  window.confirmarEnvioAlertaEstoque = async function() {
+    if (_enviandoAlerta) return;
+    const baixos = estoqueData.filter(x => x.ativo !== false && x.estoque_total <= x.minimo_alerta);
+    if (!baixos.length) { fecharAlertaEstoqueModal(); return; }
+
+    const mensagem = document.getElementById('alerta-estoque-msg').value.trim();
     _enviandoAlerta = true;
-    const btn = document.getElementById('btn-enviar-alerta');
+    const btn = document.getElementById('btn-confirmar-alerta');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Enviando...'; }
     try {
       const res = await fetch('/api/notify-slack', {
@@ -2546,6 +2606,7 @@ window.renderHistorico = renderHistorico;
         body: JSON.stringify({
           tipo: 'alerta_estoque_consolidado',
           enviado_por: (auth.currentUser?.displayName || auth.currentUser?.email || 'Admin'),
+          mensagem_adicional: mensagem || null,
           itens_baixos: baixos.map(x => ({
             nome: x.nome,
             emoji: x.emoji,
@@ -2557,8 +2618,8 @@ window.renderHistorico = renderHistorico;
       const data = await res.json();
       if (data.success) {
         showToast(`✅ Leandro notificado! ${data.itens_enviados} item(ns) enviado(s).`);
-        // marca timestamp do último envio para feedback visual
         window._ultimoAlertaEnviadoEm = new Date();
+        fecharAlertaEstoqueModal();
         renderEstoque();
       } else {
         showToast('⚠️ Erro ao enviar: ' + (data.error || 'desconhecido'));
@@ -2567,7 +2628,7 @@ window.renderHistorico = renderHistorico;
       showToast('⚠️ Erro ao enviar alerta: ' + e.message);
     } finally {
       _enviandoAlerta = false;
-      if (btn) { btn.disabled = false; btn.innerHTML = '📨 Enviar alerta consolidado ao Leandro'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = '📨 Enviar agora'; }
     }
   };
 
