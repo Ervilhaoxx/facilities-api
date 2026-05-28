@@ -660,15 +660,18 @@ module.exports = async function handler(req, res) {
   }
 
   // ============================================================
-  // ROTA 5: block_actions (cliques em botões — atualmente usado para aprovação de brindes)
-  //         Repassa internamente para o endpoint /api/brinde-aprovacao (mantém compatibilidade)
+  // ROTA 5: block_actions (cliques em botões)
+  //         - Aprovação/recusa de brinde → repassa pra /api/brinde-aprovacao
+  //         - Botões do fluxo conversacional → trata aqui
   // ============================================================
   if (body.type === 'block_actions') {
-    const actionId = body.actions?.[0]?.action_id || '';
+    const action = body.actions?.[0] || {};
+    const actionId = action.action_id || '';
+
+    // Aprovação/recusa de brinde — repassa pro endpoint legacy
     if (actionId === 'aprovar_brinde' || actionId === 'recusar_brinde' || actionId.startsWith('aprovar_') || actionId.startsWith('recusar_')) {
       try {
         const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://facilities-api.vercel.app';
-        // Reencaminha o payload original (form-urlencoded) pro endpoint legacy
         await fetch(`${baseUrl}/api/brinde-aprovacao`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -679,9 +682,57 @@ module.exports = async function handler(req, res) {
       }
       return res.status(200).send('');
     }
-    // Outros block_actions futuros podem ser tratados aqui
+
+    // ── Botões do fluxo conversacional (Slack DM via IA) ──
+    if (actionId === 'fac_confirmar' || actionId === 'fac_editar' || actionId === 'fac_cancelar' ||
+        actionId === 'fac_categoria' || actionId.startsWith('fac_')) {
+      res.status(200).send(''); // ack imediato
+      tratarBotaoFluxoConversacional(body, action).catch(err => {
+        console.error('Erro botão fluxo:', err);
+      });
+      return;
+    }
+
     return res.status(200).send('');
   }
+
+  // ============================================================
+  // ROTA 6: URL verification (Slack pede challenge ao configurar Events API)
+  // ============================================================
+  if (body.type === 'url_verification') {
+    return res.status(200).json({ challenge: body.challenge });
+  }
+
+  // ============================================================
+  // ROTA 7: event_callback → mensagens recebidas em DM
+  // ============================================================
+  if (body.type === 'event_callback' && body.event) {
+    const evt = body.event;
+
+    // Ignora eventos que NÃO são message ou que vêm do próprio bot
+    if (evt.type !== 'message') return res.status(200).send('');
+    if (evt.bot_id || evt.subtype === 'bot_message' || evt.subtype === 'message_changed' || evt.subtype === 'message_deleted') {
+      return res.status(200).send('');
+    }
+    // Só processa DMs (channel_type='im')
+    if (evt.channel_type !== 'im') return res.status(200).send('');
+    if (!evt.text || !evt.user) return res.status(200).send('');
+
+    // Ack imediato (Slack exige <3s) — processa em background
+    res.status(200).send('');
+
+    // Processa a mensagem em background
+    processarMensagemDM(evt).catch(err => {
+      console.error('Erro processando DM:', err);
+    });
+    return;
+  }
+
+  // ============================================================
+  // ROTA 8: block_actions de botões do fluxo conversacional (não-brinde)
+  // (a ROTA 5 acima já trata aprovação de brinde — esta trata outros botões)
+  // ============================================================
+  // Tratada acima na ROTA 5 (block_actions). Outros action_ids são processados lá.
 
   // ============================================================
   // Fallback: nada reconhecido
@@ -694,3 +745,325 @@ module.exports = async function handler(req, res) {
 module.exports.config = {
   api: { bodyParser: false }
 };
+
+// ============================================================================
+// FLUXO CONVERSACIONAL VIA DM
+// ============================================================================
+
+// Estado da conversação armazenado no Firestore (uma doc por usuário Slack)
+async function getEstado(slackUserId) {
+  const doc = await db.collection('slack_conversas').doc(slackUserId).get();
+  return doc.exists ? doc.data() : null;
+}
+async function setEstado(slackUserId, dados) {
+  await db.collection('slack_conversas').doc(slackUserId).set({
+    ...dados,
+    updatedAt: new Date(),
+  }, { merge: true });
+}
+async function limparEstado(slackUserId) {
+  await db.collection('slack_conversas').doc(slackUserId).delete().catch(() => {});
+}
+
+// Análise da mensagem via Claude Haiku
+async function analisarMensagem(texto, estadoAnterior = null) {
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_KEY) {
+    // Fallback sem IA: detecta por palavras-chave simples
+    return analisarPorPalavrasChave(texto);
+  }
+
+  const systemPrompt = `Você é um assistente do time de Facilities da LogComex. Sua tarefa é interpretar mensagens de colaboradores que querem abrir um chamado e extrair informações estruturadas.
+
+Categorias disponíveis (responda EXATAMENTE com um destes valores):
+- suprimentos: papelaria, material de escritório (mouse, teclado, caneta, papel, grampeador)
+- manutencao: consertos, problemas físicos (ar condicionado, lâmpada, vazamento, móvel quebrado)
+- reforma: melhorias estruturais maiores
+- acessos: criar/remover/alterar acesso a plataformas (Google, Slack, sistemas)
+- brindes: solicitar brindes da empresa (moleskine, containers, garrafas, copos, sacolas, canetas)
+- logistica: envio/recebimento de pacotes (DHL, Correios, Uber Flash)
+- outros: quando não se encaixar nas demais
+
+Prioridade (inferir do tom/urgência):
+- baixa: rotina, sem pressa
+- media: padrão (default)
+- alta: urgente, palavras como "urgente", "preciso hoje", "parou", "quebrou", "não consigo trabalhar"
+
+RESPONDA APENAS COM UM JSON VÁLIDO no formato:
+{
+  "categoria": "suprimentos" | "manutencao" | "reforma" | "acessos" | "brindes" | "logistica" | "outros" | null,
+  "titulo": "Frase curta resumindo (máx 80 chars)" | null,
+  "descricao": "Detalhes adicionais se houver, senão null",
+  "prioridade": "baixa" | "media" | "alta",
+  "tem_info_suficiente": true | false,
+  "pergunta_adicional": "Se faltar info essencial, qual pergunta fazer? Senão null",
+  "saudacao_apenas": true | false
+}
+
+Se a pessoa só mandou "oi", "olá", "bom dia" etc → saudacao_apenas: true.
+Se a categoria for "brindes" e não souber qual item → pergunta_adicional: "Qual item você precisa? (Moleskine, Garrafa, Container, etc)"
+Se a categoria for "logistica" e não souber destinatário/endereço → pergunta_adicional: "Pra quem e qual endereço?"`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: estadoAnterior
+            ? `Contexto da conversa anterior: ${JSON.stringify(estadoAnterior)}\n\nNova mensagem: "${texto}"`
+            : `Mensagem do colaborador: "${texto}"`
+        }]
+      })
+    });
+    const data = await r.json();
+    const content = data?.content?.[0]?.text || '{}';
+    // Extrai JSON do meio do texto (caso a IA decore com markdown)
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return analisarPorPalavrasChave(texto);
+  } catch (e) {
+    console.error('Erro chamando Claude Haiku:', e.message);
+    return analisarPorPalavrasChave(texto);
+  }
+}
+
+// Fallback simples sem IA
+function analisarPorPalavrasChave(texto) {
+  const t = texto.toLowerCase();
+  const isSaudacao = /^(oi|ola|olá|bom dia|boa tarde|boa noite|e aí|eai|hey|hi|hello)\s*[!.?]*\s*$/i.test(t.trim());
+  if (isSaudacao) return { saudacao_apenas: true, tem_info_suficiente: false };
+
+  let categoria = null;
+  if (/mouse|teclado|caneta|papel|grampeador|clipe|post.?it|cartucho|toner|impressora/i.test(t)) categoria = 'suprimentos';
+  else if (/ar.?condicionado|lampada|lâmpada|vazamento|conserto|quebr|reparo|manuten/i.test(t)) categoria = 'manutencao';
+  else if (/acesso|permiss|liberar|google|slack|pipefy|workspace/i.test(t)) categoria = 'acessos';
+  else if (/moleskine|garrafa|brinde|container|sacola|copo egg|tapa câmera|tapa camera/i.test(t)) categoria = 'brindes';
+  else if (/dhl|correio|envio|enviar|pacote|encomenda|uber flash/i.test(t)) categoria = 'logistica';
+
+  let prioridade = 'media';
+  if (/urgent|hoje|agora|imediat|emergen|parou|quebrou|nao consigo|não consigo/i.test(t)) prioridade = 'alta';
+
+  return {
+    categoria,
+    titulo: texto.length > 80 ? texto.substring(0, 77) + '...' : texto,
+    descricao: null,
+    prioridade,
+    tem_info_suficiente: categoria !== null,
+    pergunta_adicional: categoria === null ? 'Qual o tipo de chamado? (suprimentos, manutenção, brindes, acessos, logística, etc.)' : null,
+    saudacao_apenas: false,
+  };
+}
+
+// Processa mensagem em DM recebida
+async function processarMensagemDM(evt) {
+  const userId = evt.user;
+  const channel = evt.channel;
+  const texto = (evt.text || '').trim();
+
+  // Pega estado anterior (pode ser uma conversa em andamento)
+  const estado = await getEstado(userId);
+
+  // Comandos especiais
+  if (/^(cancelar|cancel|sair|reset)$/i.test(texto)) {
+    await limparEstado(userId);
+    await enviarMensagem(channel, '✅ Conversa reiniciada. Pode mandar uma nova solicitação quando quiser! 👋');
+    return;
+  }
+
+  // Analisar a mensagem
+  const analise = await analisarMensagem(texto, estado);
+
+  // Caso 1: Saudação simples
+  if (analise.saudacao_apenas) {
+    await enviarMensagem(channel, null, [
+      { type: 'section', text: { type: 'mrkdwn', text: `👋 *Olá!* Sou o assistente do time de Facilities da LogComex.` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `Pode me contar o que você precisa que eu te ajudo a abrir um chamado.\n\n*Exemplos:*\n• _"Preciso de um mouse novo"_\n• _"Ar condicionado da sala 3 com problema"_\n• _"Quero pedir alguns moleskines"_\n• _"Envio via DHL para São Paulo"_` } },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 Você também pode usar o formulário web: facilities-api.vercel.app' }] }
+    ]);
+    return;
+  }
+
+  // Caso 2: Falta info → faz uma pergunta e guarda estado
+  if (!analise.tem_info_suficiente && analise.pergunta_adicional) {
+    await setEstado(userId, {
+      etapa: 'aguardando_resposta',
+      categoria: analise.categoria,
+      titulo: analise.titulo,
+      descricao: analise.descricao,
+      prioridade: analise.prioridade,
+      texto_original: texto,
+    });
+    await enviarMensagem(channel, null, [
+      { type: 'section', text: { type: 'mrkdwn', text: `🤔 ${analise.pergunta_adicional}` } },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
+    ]);
+    return;
+  }
+
+  // Caso 3: Tem info suficiente → mostra resumo com botões de confirmação
+  const dados = {
+    categoria: analise.categoria,
+    titulo: analise.titulo,
+    descricao: analise.descricao,
+    prioridade: analise.prioridade,
+    texto_original: estado?.texto_original ? `${estado.texto_original}\n\n${texto}` : texto,
+  };
+  await setEstado(userId, { etapa: 'confirmar', ...dados });
+  await enviarResumoParaConfirmacao(channel, userId, dados);
+}
+
+async function enviarResumoParaConfirmacao(channel, userId, dados) {
+  const catLabel = CATEGORIAS.find(c => c.value === dados.categoria)?.label || dados.categoria || '—';
+  const prioEmoji = { baixa: '🟢 Baixa', media: '🟡 Média', alta: '🔴 Alta' }[dados.prioridade] || '🟡 Média';
+
+  await enviarMensagem(channel, '📋 Quase lá! Confira o resumo do seu chamado:', [
+    { type: 'header', text: { type: 'plain_text', text: '📋 Resumo do chamado', emoji: true } },
+    { type: 'section', text: { type: 'mrkdwn', text: `Confira se está tudo certo antes de eu abrir:` } },
+    {
+      type: 'section',
+      fields: [
+        { type: 'mrkdwn', text: `*Categoria:*\n${catLabel}` },
+        { type: 'mrkdwn', text: `*Prioridade:*\n${prioEmoji}` },
+        { type: 'mrkdwn', text: `*Solicitação:*\n${dados.titulo || '—'}` },
+        ...(dados.descricao ? [{ type: 'mrkdwn', text: `*Detalhes:*\n${dados.descricao}` }] : []),
+      ]
+    },
+    { type: 'divider' },
+    {
+      type: 'actions',
+      elements: [
+        { type: 'button', text: { type: 'plain_text', text: '✅ Confirmar e abrir', emoji: true }, style: 'primary', action_id: 'fac_confirmar', value: JSON.stringify(dados) },
+        { type: 'button', text: { type: 'plain_text', text: '✏️ Mudar categoria', emoji: true }, action_id: 'fac_editar', value: JSON.stringify(dados) },
+        { type: 'button', text: { type: 'plain_text', text: '❌ Cancelar', emoji: true }, style: 'danger', action_id: 'fac_cancelar' },
+      ]
+    }
+  ]);
+}
+
+// Tratamento dos botões do fluxo conversacional
+async function tratarBotaoFluxoConversacional(body, action) {
+  const userId = body.user?.id;
+  const channel = body.channel?.id || body.container?.channel_id;
+  const actionId = action.action_id;
+
+  if (actionId === 'fac_cancelar') {
+    await limparEstado(userId);
+    await atualizarMensagem(channel, body.message?.ts, '❌ Chamado cancelado.', [
+      { type: 'section', text: { type: 'mrkdwn', text: `❌ *Chamado cancelado.*\nSe precisar abrir outro, é só me mandar mensagem.` } }
+    ]);
+    return;
+  }
+
+  if (actionId === 'fac_editar') {
+    await enviarMensagem(channel, null, [
+      { type: 'section', text: { type: 'mrkdwn', text: `🔄 *Qual a categoria correta?*` } },
+      {
+        type: 'actions',
+        elements: CATEGORIAS.map(c => ({
+          type: 'button',
+          text: { type: 'plain_text', text: c.label, emoji: true },
+          action_id: `fac_cat_${c.value}`,
+          value: c.value,
+        })).slice(0, 5),
+      },
+      {
+        type: 'actions',
+        elements: CATEGORIAS.slice(5).map(c => ({
+          type: 'button',
+          text: { type: 'plain_text', text: c.label, emoji: true },
+          action_id: `fac_cat_${c.value}`,
+          value: c.value,
+        })),
+      }
+    ]);
+    return;
+  }
+
+  // Botões de categoria (fac_cat_<categoria>)
+  if (actionId.startsWith('fac_cat_')) {
+    const novaCategoria = actionId.replace('fac_cat_', '');
+    const estado = await getEstado(userId);
+    if (!estado) return;
+    const dadosAtualizados = { ...estado, categoria: novaCategoria, etapa: 'confirmar' };
+    await setEstado(userId, dadosAtualizados);
+    await enviarResumoParaConfirmacao(channel, userId, dadosAtualizados);
+    return;
+  }
+
+  if (actionId === 'fac_confirmar') {
+    let dados;
+    try { dados = JSON.parse(action.value || '{}'); } catch { dados = await getEstado(userId) || {}; }
+
+    // Buscar info do usuário
+    const slackUser = await getUserInfo(userId);
+
+    try {
+      const ticket = await criarTicketNoFirebase({
+        categoria: dados.categoria,
+        titulo: dados.titulo,
+        descricao: dados.descricao || dados.texto_original,
+        prioridade: dados.prioridade || 'media',
+        slackUser: slackUser || { slackId: userId },
+        dadosExtras: {},
+      });
+
+      await limparEstado(userId);
+      await notificarAdmin(ticket);
+
+      // Atualiza a mensagem com confirmação final
+      const catLabel = CATEGORIAS.find(c => c.value === ticket.categoria)?.label || ticket.categoria;
+      await atualizarMensagem(channel, body.message?.ts, `✅ Chamado ${ticket.id} aberto!`, [
+        { type: 'header', text: { type: 'plain_text', text: '✅ Chamado registrado!', emoji: true } },
+        { type: 'section', text: { type: 'mrkdwn', text: `Tudo certo! Seu chamado foi registrado e já está na fila do time. 📥` } },
+        { type: 'divider' },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Chamado:*\n${ticket.id}` },
+            { type: 'mrkdwn', text: `*Status:*\n🔵 Aberto` },
+            { type: 'mrkdwn', text: `*Categoria:*\n${catLabel}` },
+            { type: 'mrkdwn', text: `*Solicitação:*\n${ticket.titulo}` },
+          ]
+        },
+        { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • Você receberá atualizações de cada fase aqui mesmo.' }] }
+      ]);
+    } catch (err) {
+      console.error('Erro ao confirmar chamado:', err);
+      await enviarMensagem(channel, '⚠️ Ops, tive um problema pra registrar seu chamado. Tente de novo ou use o formulário web.');
+    }
+    return;
+  }
+}
+
+// Helpers de envio
+async function enviarMensagem(channel, text, blocks = null) {
+  try {
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, text: text || ' ', ...(blocks ? { blocks } : {}) })
+    });
+  } catch (e) { console.error('enviarMensagem:', e.message); }
+}
+
+async function atualizarMensagem(channel, ts, text, blocks = null) {
+  if (!ts) return enviarMensagem(channel, text, blocks);
+  try {
+    await fetch('https://slack.com/api/chat.update', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, ts, text: text || ' ', ...(blocks ? { blocks } : {}) })
+    });
+  } catch (e) { console.error('atualizarMensagem:', e.message); }
+}
