@@ -140,8 +140,40 @@ export default async function handler(req, res) {
     if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
 
     try {
-      // Canal DM do Leandro (fixo para garantir entrega)
-      const leandroDMChannel = 'D09SZ63NGUF';
+      // Buscar canal DM do Leandro dinamicamente (mais robusto que ID hardcoded)
+      // Fallback para o ID antigo caso a busca falhe
+      const LEANDRO_EMAIL = 'leandro.oliveira@logcomex.com';
+      let leandroDMChannel = null;
+
+      try {
+        const userRes = await fetch(
+          `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(LEANDRO_EMAIL)}`,
+          { headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}` } }
+        );
+        const userData = await userRes.json();
+        if (userData.ok && userData.user?.id) {
+          const dmRes = await fetch('https://slack.com/api/conversations.open', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ users: userData.user.id })
+          });
+          const dmData = await dmRes.json();
+          if (dmData.ok && dmData.channel?.id) {
+            leandroDMChannel = dmData.channel.id;
+            console.log(`✅ Canal DM Leandro resolvido: ${leandroDMChannel} (era hardcoded D09SZ63NGUF)`);
+          }
+        } else {
+          console.warn('users.lookupByEmail falhou:', userData.error);
+        }
+      } catch (e) {
+        console.warn('Erro ao buscar Leandro no Slack:', e.message);
+      }
+
+      // Fallback para o ID hardcoded (caso lookup falhe)
+      if (!leandroDMChannel) {
+        leandroDMChannel = 'D09SZ63NGUF';
+        console.warn('⚠️ Usando canal DM hardcoded como fallback');
+      }
 
       const esgotados = itens_baixos.filter(x => (x.estoque_total || 0) <= 0);
       const baixos    = itens_baixos.filter(x => (x.estoque_total || 0) > 0);
@@ -227,8 +259,8 @@ export default async function handler(req, res) {
         })
       });
       const msgData = await msgRes.json();
-      if (!msgData.ok) return res.status(500).json({ error: `msg error: ${msgData.error}` });
-      return res.status(200).json({ success: true, message: 'Leandro notificado!', itens_enviados: itens_baixos.length });
+      if (!msgData.ok) return res.status(500).json({ error: `msg error: ${msgData.error}`, canal_usado: leandroDMChannel });
+      return res.status(200).json({ success: true, message: 'Leandro notificado!', itens_enviados: itens_baixos.length, canal_usado: leandroDMChannel });
     } catch(err) {
       return res.status(500).json({ error: err.message });
     }
