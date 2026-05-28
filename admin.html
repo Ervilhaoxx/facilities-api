@@ -2514,26 +2514,38 @@ window.renderHistorico = renderHistorico;
 
   // Controle para não disparar o mesmo alerta duas vezes seguidas
   let _ultimoAlertaEstoque = '';
-  let _alertaJaEnviado = false; // Só envia UMA vez por sessão
+  let _alertaJaEnviado = false; // mantido para compat — não é mais usado
 
+  // ⚠️ DESATIVADO: alerta automático foi substituído por botão manual no banner.
+  // Mantido como no-op para não quebrar chamadas antigas.
   async function verificarAlertaEstoque(dados) {
-    if (_alertaJaEnviado) return; // Já notificou nesta sessão
-    const baixos = dados.filter(x => x.ativo !== false && x.estoque_total <= x.minimo_alerta);
-    if (!baixos.length) return;
+    return; // o disparo agora é manual via enviarAlertaEstoqueConsolidado()
+  }
 
-    // Criar chave única para evitar spam
-    const chave = baixos.map(x => x._id + ':' + x.estoque_total).join(',');
-    if (chave === _ultimoAlertaEstoque) return;
-    _ultimoAlertaEstoque = chave;
-    _alertaJaEnviado = true; // Marcar como enviado
+  // ── NOVO: envio manual consolidado pelo botão do banner ──
+  let _enviandoAlerta = false;
+  window.enviarAlertaEstoqueConsolidado = async function () {
+    if (_enviandoAlerta) return;
+    const baixos = estoqueData.filter(x => x.ativo !== false && x.estoque_total <= x.minimo_alerta);
+    if (!baixos.length) { showToast('Nenhum item com estoque baixo no momento.'); return; }
 
-    // Enviar notificação para o Leandro via Slack
+    const total = baixos.length;
+    const esgotadosN = baixos.filter(x => x.estoque_total <= 0).length;
+    const resumo = esgotadosN
+      ? `${total} item(ns) — ${esgotadosN} esgotado(s)`
+      : `${total} item(ns) com estoque baixo`;
+    if (!confirm(`Enviar alerta consolidado ao Leandro?\n\n📦 ${resumo}\n\nEle receberá uma DM única no Slack com todos os itens listados.`)) return;
+
+    _enviandoAlerta = true;
+    const btn = document.getElementById('btn-enviar-alerta');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Enviando...'; }
     try {
       const res = await fetch('/api/notify-slack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tipo: 'alerta_estoque',
+          tipo: 'alerta_estoque_consolidado',
+          enviado_por: (auth.currentUser?.displayName || auth.currentUser?.email || 'Admin'),
           itens_baixos: baixos.map(x => ({
             nome: x.nome,
             emoji: x.emoji,
@@ -2543,11 +2555,21 @@ window.renderHistorico = renderHistorico;
         })
       });
       const data = await res.json();
-      if (data.success) console.log('✅ Leandro notificado sobre estoque baixo!');
+      if (data.success) {
+        showToast(`✅ Leandro notificado! ${data.itens_enviados} item(ns) enviado(s).`);
+        // marca timestamp do último envio para feedback visual
+        window._ultimoAlertaEnviadoEm = new Date();
+        renderEstoque();
+      } else {
+        showToast('⚠️ Erro ao enviar: ' + (data.error || 'desconhecido'));
+      }
     } catch(e) {
-      console.log('Erro ao notificar estoque:', e);
+      showToast('⚠️ Erro ao enviar alerta: ' + e.message);
+    } finally {
+      _enviandoAlerta = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = '📨 Enviar alerta consolidado ao Leandro'; }
     }
-  }
+  };
 
   function atualizarBadgeEstoque() {
     const baixos = estoqueData.filter(x => x.ativo && x.estoque_total <= x.minimo_alerta);
@@ -2579,12 +2601,60 @@ window.renderHistorico = renderHistorico;
       ].map(s => `<div class="imob-stat"><div class="imob-stat-num" style="color:${s.c}">${s.n}</div><div class="imob-stat-label">${s.l}</div></div>`).join('');
     }
 
-    // Alertas
+    // Banner consolidado com botão de envio manual
     if (alertasEl) {
-      alertasEl.innerHTML = [
-        ...esgotados.map(x => `<div class="imob-alerta" style="background:rgba(220,38,38,0.06);border-color:rgba(220,38,38,0.3);color:#dc2626;">🚨 <b>${x.nome}</b> está <b>esgotado!</b> Faça um pedido urgente.</div>`),
-        ...baixos.map(x => `<div class="imob-alerta">⚠️ <b>${x.nome}</b> com estoque baixo: apenas <b>${x.estoque_total} unidades</b> restantes. Considere fazer um pedido.</div>`),
-      ].join('');
+      const itensFalta = [...esgotados, ...baixos];
+      if (!itensFalta.length) {
+        alertasEl.innerHTML = '';
+      } else {
+        const temEsgotado = esgotados.length > 0;
+        const cor = temEsgotado ? '#dc2626' : '#b45309';
+        const bg  = temEsgotado ? 'rgba(220,38,38,0.06)' : 'rgba(180,83,9,0.06)';
+        const icon = temEsgotado ? '🚨' : '⚠️';
+        const titulo = temEsgotado
+          ? `${itensFalta.length} ${itensFalta.length===1?'item precisa':'itens precisam'} de atenção urgente`
+          : `${baixos.length} ${baixos.length===1?'item está':'itens estão'} com estoque baixo`;
+
+        const ultimoEnvio = window._ultimoAlertaEnviadoEm
+          ? `<div style="font-size:0.72rem;color:var(--ink3);margin-top:6px;">✉️ Último alerta enviado: ${window._ultimoAlertaEnviadoEm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`
+          : '';
+
+        const listaItens = itensFalta.map(x => {
+          const isEsg = x.estoque_total <= 0;
+          const statusTag = isEsg
+            ? `<span style="color:#dc2626;font-weight:700;">Esgotado</span>`
+            : `<span style="color:#b45309;font-weight:700;">${x.estoque_total} un.</span>`;
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:0.85rem;border-bottom:1px solid rgba(0,0,0,0.05);">
+            <span style="font-size:1.1rem;">${x.emoji || '📦'}</span>
+            <span style="flex:1;color:var(--ink);font-weight:600;">${x.nome}</span>
+            ${statusTag}
+            <span style="font-size:0.72rem;color:var(--ink3);">mín: ${x.minimo_alerta}</span>
+          </div>`;
+        }).join('');
+
+        alertasEl.innerHTML = `
+          <div style="background:${bg};border:1.5px solid ${cor}33;border-radius:12px;padding:16px 18px;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+              <div>
+                <div style="font-size:1rem;font-weight:700;color:${cor};display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:1.2rem;">${icon}</span> ${titulo}
+                </div>
+                <div style="font-size:0.8rem;color:var(--ink2);margin-top:4px;">
+                  Revise os itens abaixo e envie um alerta consolidado ao Leandro pelo Slack.
+                </div>
+                ${ultimoEnvio}
+              </div>
+              <button id="btn-enviar-alerta" onclick="enviarAlertaEstoqueConsolidado()"
+                style="padding:10px 16px;background:${cor};color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px ${cor}44;transition:transform .12s;"
+                onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                📨 Enviar alerta consolidado ao Leandro
+              </button>
+            </div>
+            <div style="background:rgba(255,255,255,0.5);border-radius:8px;padding:8px 14px;">
+              ${listaItens}
+            </div>
+          </div>`;
+      }
     }
 
     // Cards
