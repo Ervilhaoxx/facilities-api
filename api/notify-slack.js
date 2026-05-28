@@ -134,36 +134,63 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Alerta de estoque baixo → DM para o Leandro ─────────────
-  if (tipo === 'alerta_estoque') {
-    const { itens_baixos } = req.body;
+  // ── Alerta de estoque baixo → DM consolidada para o Leandro ─────────────
+  if (tipo === 'alerta_estoque' || tipo === 'alerta_estoque_consolidado') {
+    const { itens_baixos, enviado_por } = req.body;
     if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
 
     try {
       // Canal DM do Leandro (fixo para garantir entrega)
       const leandroDMChannel = 'D09SZ63NGUF';
 
-      const temEsgotado = itens_baixos.some(x => x.estoque_total <= 0);
+      const esgotados = itens_baixos.filter(x => (x.estoque_total || 0) <= 0);
+      const baixos    = itens_baixos.filter(x => (x.estoque_total || 0) > 0);
+      const temEsgotado = esgotados.length > 0;
+
+      const headlineTxt = temEsgotado
+        ? `🚨 Alerta de Estoque — ${itens_baixos.length} ${itens_baixos.length===1?'item precisa':'itens precisam'} de atenção`
+        : `⚠️ Alerta de Estoque Baixo — ${baixos.length} ${baixos.length===1?'item':'itens'}`;
+
+      const introTxt = enviado_por
+        ? `Olá, Leandro! *${enviado_por}* solicitou reposição dos seguintes brindes:`
+        : `Olá, Leandro! Os seguintes brindes precisam de reposição:`;
 
       const blocks = [
-        {
-          type: 'header',
-          text: { type: 'plain_text', text: temEsgotado ? '🚨 Alerta de Estoque Esgotado!' : '⚠️ Alerta de Estoque Baixo', emoji: true }
-        },
-        {
-          type: 'section',
-          text: { type: 'mrkdwn', text: `Leandro, os seguintes itens de brinde precisam de reposição:` }
-        },
+        { type: 'header', text: { type: 'plain_text', text: headlineTxt, emoji: true } },
+        { type: 'section', text: { type: 'mrkdwn', text: introTxt } },
         { type: 'divider' },
-        ...itens_baixos.map(item => ({
+      ];
+
+      // Seção de esgotados (se houver)
+      if (esgotados.length) {
+        blocks.push({
           type: 'section',
-          fields: [
-            { type: 'mrkdwn', text: `*${item.emoji} ${item.nome}*` },
-            { type: 'mrkdwn', text: item.estoque_total <= 0
-              ? `*Status:* 🔴 Esgotado`
-              : `*Restam:* ${item.estoque_total} unidades (mínimo: ${item.minimo_alerta})` }
-          ]
-        })),
+          text: { type: 'mrkdwn', text: `*🔴 Esgotados (${esgotados.length}):*` }
+        });
+        esgotados.forEach(item => {
+          blocks.push({
+            type: 'section',
+            text: { type: 'mrkdwn', text: `${item.emoji || '📦'} *${item.nome}* — _Esgotado_ • mínimo: ${item.minimo_alerta} un.` }
+          });
+        });
+        if (baixos.length) blocks.push({ type: 'divider' });
+      }
+
+      // Seção de estoque baixo (se houver)
+      if (baixos.length) {
+        blocks.push({
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*🟡 Estoque Baixo (${baixos.length}):*` }
+        });
+        baixos.forEach(item => {
+          blocks.push({
+            type: 'section',
+            text: { type: 'mrkdwn', text: `${item.emoji || '📦'} *${item.nome}* — restam *${item.estoque_total} un.* (mínimo: ${item.minimo_alerta})` }
+          });
+        });
+      }
+
+      blocks.push(
         { type: 'divider' },
         {
           type: 'actions',
@@ -178,20 +205,20 @@ export default async function handler(req, res) {
           type: 'context',
           elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • Estoque de Brindes' }]
         }
-      ];
+      );
 
       const msgRes = await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: leandroDMChannel,
-          text: temEsgotado ? '🚨 Item de brinde esgotado!' : '⚠️ Estoque de brinde baixo!',
+          text: temEsgotado ? `🚨 ${itens_baixos.length} item(ns) de brinde precisam de atenção!` : `⚠️ ${baixos.length} item(ns) com estoque baixo`,
           blocks
         })
       });
       const msgData = await msgRes.json();
-      if (!msgData.ok) return res.status(500).json({ error: `msg error: ${msgData.error} | channel: ${dmData.channel.id}` });
-      return res.status(200).json({ success: true, message: 'Leandro notificado!', channel: dmData.channel.id });
+      if (!msgData.ok) return res.status(500).json({ error: `msg error: ${msgData.error}` });
+      return res.status(200).json({ success: true, message: 'Leandro notificado!', itens_enviados: itens_baixos.length });
     } catch(err) {
       return res.status(500).json({ error: err.message });
     }
