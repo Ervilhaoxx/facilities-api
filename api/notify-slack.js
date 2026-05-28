@@ -207,7 +207,7 @@ export default async function handler(req, res) {
           elements: [{
             type: 'button',
             text: { type: 'plain_text', text: '📦 Ver Estoque no Painel', emoji: true },
-            url: 'https://facilities-api.vercel.app/admin.html',
+            url: 'https://facilities-api.vercel.app/admin.html#estoque',
             style: 'primary'
           }]
         },
