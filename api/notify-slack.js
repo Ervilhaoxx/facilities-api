@@ -136,7 +136,7 @@ export default async function handler(req, res) {
 
   // ── Alerta de estoque baixo → DM consolidada para o Leandro ─────────────
   if (tipo === 'alerta_estoque' || tipo === 'alerta_estoque_consolidado') {
-    const { itens_baixos, enviado_por } = req.body;
+    const { itens_baixos, enviado_por, mensagem_adicional } = req.body;
     if (!itens_baixos || !itens_baixos.length) return res.status(400).json({ error: 'itens_baixos obrigatório' });
 
     try {
@@ -158,8 +158,18 @@ export default async function handler(req, res) {
       const blocks = [
         { type: 'header', text: { type: 'plain_text', text: headlineTxt, emoji: true } },
         { type: 'section', text: { type: 'mrkdwn', text: introTxt } },
-        { type: 'divider' },
       ];
+
+      // Mensagem adicional do admin (se houver) — antes da divider, em destaque
+      if (mensagem_adicional && mensagem_adicional.trim()) {
+        const msgLimpa = mensagem_adicional.trim().replace(/\n/g, '\n>');
+        blocks.push({
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*📝 Mensagem do solicitante:*\n>${msgLimpa}` }
+        });
+      }
+
+      blocks.push({ type: 'divider' });
 
       // Seção de esgotados (se houver)
       if (esgotados.length) {
