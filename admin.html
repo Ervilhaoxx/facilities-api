@@ -1090,6 +1090,12 @@ const isAdminOrViewer = (email) => {
         const dataAbertura = t.data_abertura
           ? (t.data_abertura.toDate ? t.data_abertura.toDate().toISOString() : t.data_abertura)
           : null;
+        // Se for logística e já tem código de rastreio, inclui na DM
+        const payloadEnvio = (t.categoria === 'logistica' && t.rastreio) ? {
+          rastreio: t.rastreio,
+          transportadora: t.transportadora,
+          item_enviado: t.item_enviado,
+        } : {};
         fetch('/api/notify-slack', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1106,6 +1112,7 @@ const isAdminOrViewer = (email) => {
             observacao,
             dataAbertura,
             origem: 'admin',
+            ...payloadEnvio,
           })
         }).catch(err => console.log('Erro Slack:', err));
       }
@@ -1603,8 +1610,12 @@ function updateBadge() {
         updatedAt: new Date(),
         historico: [...(t.historico||[]), { acao: 'Codigo de rastreio adicionado: ' + codigo, data: new Date().toISOString(), usuario: 'Admin' }]
       });
-      // Notificar via Slack/API
-      if (t.email) {
+      // Atualiza objeto local pra refletir o novo código se admin concluir em seguida
+      t.rastreio = codigo;
+
+      // Se o ticket já está concluído, não manda DM (evita duplicar — colaborador já recebeu DM de conclusão)
+      // Se ainda está em andamento, manda DM de rastreio normal
+      if (t.email && t.status !== 'Concluído') {
         await fetch('/api/notify-slack', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1619,8 +1630,12 @@ function updateBadge() {
             item: t.item_enviado || '',
           })
         });
+        showToast('Rastreio salvo! Colaborador notificado.');
+      } else if (t.status === 'Concluído') {
+        showToast('Rastreio salvo. (Ticket já concluído — para reenviar ao colaborador, mude o status e volte a Concluído.)');
+      } else {
+        showToast('Rastreio salvo.');
       }
-      showToast('Rastreio salvo! Colaborador notificado.');
     } catch(err) { console.error(err); showToast('Erro ao salvar rastreio.'); }
   };
 
