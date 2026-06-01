@@ -739,16 +739,14 @@ module.exports = async function handler(req, res) {
       } catch (e) { console.warn('dedup:', e.message); }
     }
 
-    // RESPONDE AO SLACK IMEDIATAMENTE
-    res.status(200).send('');
-
-    // Processa em background (Vercel mantém o handler vivo até await terminar)
+    // Processa SÍNCRONO (Vercel mata a função após res.send, então precisa ser antes)
+    // Slack pode dar timeout >3s mas o dedup impede reprocessamento
     try {
       await processarMensagemDM(evt);
     } catch (err) {
       console.error('Erro processando DM:', err.message);
     }
-    return;
+    return res.status(200).send('');
   }
 
   // ============================================================
