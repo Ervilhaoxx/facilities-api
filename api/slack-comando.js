@@ -697,11 +697,13 @@ module.exports = async function handler(req, res) {
     // ── Botões do fluxo conversacional (Slack DM via IA) ──
     if (actionId === 'fac_confirmar' || actionId === 'fac_editar' || actionId === 'fac_cancelar' ||
         actionId === 'fac_categoria' || actionId.startsWith('fac_')) {
-      res.status(200).send(''); // ack imediato
-      tratarBotaoFluxoConversacional(body, action).catch(err => {
+      // Processa SÍNCRONO (Vercel mata função após res.send)
+      try {
+        await tratarBotaoFluxoConversacional(body, action);
+      } catch (err) {
         console.error('Erro botão fluxo:', err);
-      });
-      return;
+      }
+      return res.status(200).send('');
     }
 
     return res.status(200).send('');
@@ -1046,7 +1048,18 @@ async function tratarBotaoFluxoConversacional(body, action) {
   const channel = body.channel?.id || body.container?.channel_id;
   const actionId = action.action_id;
 
+  const log = async (etapa, extra = {}) => {
+    try {
+      await db.collection('slack_debug_logs').add({
+        at: new Date(), user: userId, etapa: `btn_${etapa}`, action_id: actionId, ...extra,
+      });
+    } catch {}
+  };
+
+  await log('inicio');
+
   if (actionId === 'fac_cancelar') {
+    await log('cancelar');
     await limparEstado(userId);
     await atualizarMensagem(channel, body.message?.ts, '❌ Chamado cancelado.', [
       { type: 'section', text: { type: 'mrkdwn', text: `❌ *Chamado cancelado.*\nSe precisar abrir outro, é só me mandar mensagem.` } }
@@ -1091,11 +1104,14 @@ async function tratarBotaoFluxoConversacional(body, action) {
   }
 
   if (actionId === 'fac_confirmar') {
+    await log('confirmar_inicio');
     let dados;
     try { dados = JSON.parse(action.value || '{}'); } catch { dados = await getEstado(userId) || {}; }
+    await log('confirmar_dados', { cat: dados.categoria, titulo: (dados.titulo || '').substring(0, 40) });
 
     // Buscar info do usuário
     const slackUser = await getUserInfo(userId);
+    await log('confirmar_user', { email: slackUser?.email, nome: slackUser?.nome });
 
     try {
       const ticket = await criarTicketNoFirebase({
@@ -1106,9 +1122,11 @@ async function tratarBotaoFluxoConversacional(body, action) {
         slackUser: slackUser || { slackId: userId },
         dadosExtras: {},
       });
+      await log('confirmar_ticket_criado', { id: ticket.id });
 
       await limparEstado(userId);
       await notificarAdmin(ticket);
+      await log('confirmar_admin_notif');
 
       // Atualiza a mensagem com confirmação final
       const catLabel = CATEGORIAS.find(c => c.value === ticket.categoria)?.label || ticket.categoria;
@@ -1127,7 +1145,9 @@ async function tratarBotaoFluxoConversacional(body, action) {
         },
         { type: 'context', elements: [{ type: 'mrkdwn', text: '🏢 *Facilities LogComex* • Você receberá atualizações de cada fase aqui mesmo.' }] }
       ]);
+      await log('confirmar_msg_atualizada');
     } catch (err) {
+      await log('confirmar_ERRO', { err: err.message, stack: err.stack?.substring(0, 300) });
       console.error('Erro ao confirmar chamado:', err);
       await enviarMensagem(channel, '⚠️ Ops, tive um problema pra registrar seu chamado. Tente de novo ou use o formulário web.');
     }
