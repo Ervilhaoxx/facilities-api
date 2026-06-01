@@ -796,36 +796,41 @@ async function analisarMensagem(texto, estadoAnterior = null) {
     return analisarPorPalavrasChave(texto);
   }
 
-  const systemPrompt = `Você é um assistente do time de Facilities da LogComex. Sua tarefa é interpretar mensagens de colaboradores que querem abrir um chamado e extrair informações estruturadas.
+  const systemPrompt = `Você é um assistente do time de Facilities da LogComex. Sua tarefa é interpretar QUALQUER mensagem de colaborador como uma solicitação de chamado e extrair info estruturada.
+
+REGRAS IMPORTANTES:
+1. SEMPRE marcar tem_info_suficiente: true (a pessoa vai confirmar depois com botão, então NÃO pergunte detalhes)
+2. SEMPRE sugerir uma categoria — se estiver em dúvida, use "outros"
+3. SEMPRE criar um título curto e descritivo a partir do que a pessoa disse
+4. NUNCA pedir mais detalhes — pergunta_adicional sempre null
+5. Só marcar saudacao_apenas: true se for EXCLUSIVAMENTE uma saudação ("oi", "olá", "bom dia"). Se tiver QUALQUER pedido junto ("oi, preciso de um mouse"), é solicitação, não saudação.
 
 Categorias disponíveis (responda EXATAMENTE com um destes valores):
-- suprimentos: papelaria, material de escritório (mouse, teclado, caneta, papel, grampeador)
-- manutencao: consertos, problemas físicos (ar condicionado, lâmpada, vazamento, móvel quebrado)
-- reforma: melhorias estruturais maiores
-- acessos: criar/remover/alterar acesso a plataformas (Google, Slack, sistemas)
-- brindes: solicitar brindes da empresa (moleskine, containers, garrafas, copos, sacolas, canetas)
-- logistica: envio/recebimento de pacotes (DHL, Correios, Uber Flash)
-- outros: quando não se encaixar nas demais
+- suprimentos: papelaria, material de escritório (mouse, teclado, caneta, papel, grampeador, fone, suporte)
+- manutencao: consertos, problemas físicos (ar condicionado, lâmpada, vazamento, móvel quebrado, porta, fechadura)
+- reforma: melhorias estruturais maiores (reforma de sala, novo layout, pintura)
+- acessos: criar/remover/alterar acesso a plataformas (Google, Slack, sistemas, e-mail, VPN)
+- brindes: brindes da empresa (moleskine, container, garrafa, copo, sacola, caneta brinde, tapa câmera)
+- logistica: envio/recebimento de pacotes (DHL, Correios, Uber Flash, motoboy)
+- outros: quando realmente não souber em qual encaixar
 
-Prioridade (inferir do tom/urgência):
-- baixa: rotina, sem pressa
-- media: padrão (default)
-- alta: urgente, palavras como "urgente", "preciso hoje", "parou", "quebrou", "não consigo trabalhar"
+Prioridade:
+- baixa: rotina, "quando puder", "sem pressa"
+- media: padrão (use isso na dúvida)
+- alta: urgente, "preciso hoje", "parou", "quebrou", "não consigo trabalhar", "emergência"
 
 RESPONDA APENAS COM UM JSON VÁLIDO no formato:
 {
-  "categoria": "suprimentos" | "manutencao" | "reforma" | "acessos" | "brindes" | "logistica" | "outros" | null,
-  "titulo": "Frase curta resumindo (máx 80 chars)" | null,
-  "descricao": "Detalhes adicionais se houver, senão null",
+  "categoria": "suprimentos" | "manutencao" | "reforma" | "acessos" | "brindes" | "logistica" | "outros",
+  "titulo": "Frase curta resumindo (máx 80 chars)",
+  "descricao": "Texto completo enviado pela pessoa, formatado",
   "prioridade": "baixa" | "media" | "alta",
-  "tem_info_suficiente": true | false,
-  "pergunta_adicional": "Se faltar info essencial, qual pergunta fazer? Senão null",
-  "saudacao_apenas": true | false
+  "tem_info_suficiente": true,
+  "pergunta_adicional": null,
+  "saudacao_apenas": false
 }
 
-Se a pessoa só mandou "oi", "olá", "bom dia" etc → saudacao_apenas: true.
-Se a categoria for "brindes" e não souber qual item → pergunta_adicional: "Qual item você precisa? (Moleskine, Garrafa, Container, etc)"
-Se a categoria for "logistica" e não souber destinatário/endereço → pergunta_adicional: "Pra quem e qual endereço?"`;
+Lembre-se: a pessoa SEMPRE poderá editar ou cancelar depois pelos botões. Seu trabalho é só extrair o melhor possível.`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -864,26 +869,28 @@ Se a categoria for "logistica" e não souber destinatário/endereço → pergunt
 // Fallback simples sem IA
 function analisarPorPalavrasChave(texto) {
   const t = texto.toLowerCase();
-  const isSaudacao = /^(oi|ola|olá|bom dia|boa tarde|boa noite|e aí|eai|hey|hi|hello)\s*[!.?]*\s*$/i.test(t.trim());
+  const isSaudacao = /^(oi+|oii+|ola+|ol[áa]+|bom dia|boa tarde|boa noite|e a[ií]+|eai+|hey|hi|hello|alo|al[ôo]+|menu|ajuda|help|começar|comecar|start|teste)\s*[!.?,]*\s*$/i.test(t.trim());
   if (isSaudacao) return { saudacao_apenas: true, tem_info_suficiente: false };
 
-  let categoria = null;
-  if (/mouse|teclado|caneta|papel|grampeador|clipe|post.?it|cartucho|toner|impressora/i.test(t)) categoria = 'suprimentos';
-  else if (/ar.?condicionado|lampada|lâmpada|vazamento|conserto|quebr|reparo|manuten/i.test(t)) categoria = 'manutencao';
-  else if (/acesso|permiss|liberar|google|slack|pipefy|workspace/i.test(t)) categoria = 'acessos';
-  else if (/moleskine|garrafa|brinde|container|sacola|copo egg|tapa câmera|tapa camera/i.test(t)) categoria = 'brindes';
-  else if (/dhl|correio|envio|enviar|pacote|encomenda|uber flash/i.test(t)) categoria = 'logistica';
+  let categoria = 'outros';
+  if (/mouse|teclado|caneta(?!.*brinde)|papel|grampeador|clipe|post.?it|cartucho|toner|impressora|fone|headset|suporte|monitor/i.test(t)) categoria = 'suprimentos';
+  else if (/ar.?condicionado|lampada|lâmpada|vazamento|conserto|quebr|reparo|manuten|porta|fechadura|mesa|cadeira|infiltra/i.test(t)) categoria = 'manutencao';
+  else if (/reforma|pintura|layout|estrutura/i.test(t)) categoria = 'reforma';
+  else if (/acesso|permiss|liberar|google|slack|pipefy|workspace|vpn|email|senha|conta/i.test(t)) categoria = 'acessos';
+  else if (/moleskine|garrafa|brinde|container|sacola|copo egg|tapa câmera|tapa camera|caneta brinde/i.test(t)) categoria = 'brindes';
+  else if (/dhl|correio|envio|enviar|pacote|encomenda|uber flash|motoboy/i.test(t)) categoria = 'logistica';
 
   let prioridade = 'media';
   if (/urgent|hoje|agora|imediat|emergen|parou|quebrou|nao consigo|não consigo/i.test(t)) prioridade = 'alta';
+  if (/quando puder|sem pressa|tranquil/i.test(t)) prioridade = 'baixa';
 
   return {
     categoria,
     titulo: texto.length > 80 ? texto.substring(0, 77) + '...' : texto,
-    descricao: null,
+    descricao: texto,
     prioridade,
-    tem_info_suficiente: categoria !== null,
-    pergunta_adicional: categoria === null ? 'Qual o tipo de chamado? (suprimentos, manutenção, brindes, acessos, logística, etc.)' : null,
+    tem_info_suficiente: true,
+    pergunta_adicional: null,
     saudacao_apenas: false,
   };
 }
