@@ -902,11 +902,21 @@ async function processarMensagemDM(evt) {
   const texto = (evt.text || '').trim();
   const textoLower = texto.toLowerCase();
 
+  const log = async (etapa, extra = {}) => {
+    try {
+      await db.collection('slack_debug_logs').add({
+        at: new Date(), user: userId, texto: texto.substring(0, 80), etapa, ...extra,
+      });
+    } catch {}
+  };
+
+  await log('inicio');
   console.log('[processarMensagemDM] início | user:', userId, '| channel:', channel, '| texto:', texto.substring(0, 50));
 
   try {
     // Comandos especiais
     if (/^(cancelar|cancel|sair|reset)$/i.test(texto)) {
+      await log('cancelar');
       await limparEstado(userId);
       await enviarMensagem(channel, '✅ Conversa reiniciada. Pode mandar uma nova solicitação quando quiser! 👋');
       return;
@@ -916,6 +926,7 @@ async function processarMensagemDM(evt) {
     // Responde imediato — não depende de quota nem de timeout
     const padraoSaudacao = /^(oi+|oii+|ola+|ol[áa]+|hey|hi|hello|alo|al[ôo]+|bom dia|boa tarde|boa noite|e a[ií]+|eai+|menu|ajuda|help|começar|comecar|start|teste)[\s!.?,]*$/i;
     if (padraoSaudacao.test(texto)) {
+      await log('saudacao_direta');
       console.log('[processarMensagemDM] detectada saudação direta');
       await enviarMensagem(channel, '👋 Olá! Sou o assistente do time de Facilities.', [
         { type: 'header', text: { type: 'plain_text', text: '👋 Olá!', emoji: true } },
@@ -924,6 +935,7 @@ async function processarMensagemDM(evt) {
         { type: 'divider' },
         { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 Você também pode usar o formulário: <https://facilities-api.vercel.app|facilities-api.vercel.app>' }] }
       ]);
+      await log('saudacao_enviada');
       console.log('[processarMensagemDM] saudação enviada ✅');
       return;
     }
@@ -932,12 +944,15 @@ async function processarMensagemDM(evt) {
     let estado = null;
     try {
       estado = await getEstado(userId);
+      await log('estado_lido', { tem_estado: !!estado });
     } catch (e) {
+      await log('estado_erro', { err: e.message });
       console.warn('[processarMensagemDM] falha getEstado (segue sem):', e.message);
     }
 
     // Analisar a mensagem com IA (com timeout de 5s)
     console.log('[processarMensagemDM] chamando IA...');
+    await log('antes_IA');
     const analise = await Promise.race([
       analisarMensagem(texto, estado),
       new Promise((resolve) => setTimeout(() => {
@@ -945,10 +960,12 @@ async function processarMensagemDM(evt) {
         resolve(analisarPorPalavrasChave(texto));
       }, 5000))
     ]);
+    await log('depois_IA', { categoria: analise?.categoria, titulo: analise?.titulo?.substring(0, 40), suficiente: analise?.tem_info_suficiente });
     console.log('[processarMensagemDM] análise:', JSON.stringify(analise).substring(0, 200));
 
     // Caso 1: IA detectou saudação
     if (analise.saudacao_apenas) {
+      await log('IA_saudacao');
       await enviarMensagem(channel, '👋 Olá!', [
         { type: 'section', text: { type: 'mrkdwn', text: `👋 *Olá!* Sou o assistente do time de Facilities da LogComex.` } },
         { type: 'section', text: { type: 'mrkdwn', text: `Me conta o que você precisa que eu abro o chamado.\n\n*Exemplos:*\n• _"Preciso de um mouse novo"_\n• _"Ar condicionado da sala 3 com problema"_\n• _"Quero pedir moleskines"_` } }
@@ -958,6 +975,7 @@ async function processarMensagemDM(evt) {
 
     // Caso 2: Falta info → faz pergunta
     if (!analise.tem_info_suficiente && analise.pergunta_adicional) {
+      await log('faltando_info');
       try {
         await setEstado(userId, {
           etapa: 'aguardando_resposta',
@@ -976,6 +994,7 @@ async function processarMensagemDM(evt) {
     }
 
     // Caso 3: Tem info suficiente → resumo com botões
+    await log('preparando_resumo');
     const dados = {
       categoria: analise.categoria,
       titulo: analise.titulo,
@@ -986,9 +1005,12 @@ async function processarMensagemDM(evt) {
     try {
       await setEstado(userId, { etapa: 'confirmar', ...dados });
     } catch (e) { console.warn('setEstado fail:', e.message); }
+    await log('enviando_resumo');
     await enviarResumoParaConfirmacao(channel, userId, dados);
+    await log('resumo_enviado');
 
   } catch (err) {
+    await log('ERRO', { err: err.message, stack: err.stack?.substring(0, 400) });
     console.error('[processarMensagemDM] ERRO:', err.message, err.stack);
     // Tenta avisar o usuário mesmo em erro
     try {
