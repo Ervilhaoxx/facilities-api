@@ -646,26 +646,106 @@ body::before {
 
 /* Controles */
 .controls {
-  position: fixed; bottom: 32px; right: 32px;
-  display: flex; gap: 8px; z-index: 100;
-  opacity: 0.4;
-  transition: opacity 300ms;
-}
-.controls:hover { opacity: 1; }
-.controls button {
-  width: 36px; height: 36px;
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+  opacity: 1;
+  background: rgba(45, 8, 93, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 10px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(226, 208, 250, 0.2);
+  border: 1px solid rgba(226, 208, 250, 0.3);
+  box-shadow: 0 8px 32px rgba(11, 13, 25, 0.6);
+}
+.controls button {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(226, 208, 250, 0.35);
   color: var(--lx-white);
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--lx-font-body); font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--lx-font-body);
+  font-size: 20px;
+  font-weight: 600;
   transition: all 200ms var(--ease-out);
 }
 .controls button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
+  background: var(--lx-primary-pure);
+  border-color: var(--lx-primary-light);
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 19, 208, 0.5);
+}
+.controls button#pauseBtn {
+  background: var(--lx-primary-pure);
+  border-color: var(--lx-primary-light);
+  box-shadow: 0 0 0 0 rgba(102, 19, 208, 0.6);
+  animation: pulseBtn 2.5s ease-in-out infinite;
+}
+.controls button#pauseBtn:hover {
+  background: var(--lx-primary-medium);
+  animation: none;
+}
+
+@keyframes pulseBtn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(102, 19, 208, 0.6); }
+  50% { box-shadow: 0 0 0 12px rgba(102, 19, 208, 0); }
+}
+
+/* Tooltip nos botões */
+.controls button[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(11, 13, 25, 0.95);
+  color: var(--lx-white);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: var(--lx-font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 200ms var(--ease-out);
+  border: 1px solid rgba(226, 208, 250, 0.2);
+}
+.controls button[data-tip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Label "Controles" sutil em cima */
+.controls-label {
+  position: fixed;
+  bottom: 100px;
+  right: 32px;
+  z-index: 99;
+  font-family: var(--lx-font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--lx-primary-lightest);
+  opacity: 0;
+  animation: fadeInLabel 600ms ease 1500ms forwards;
+  text-align: right;
+  pointer-events: none;
+}
+@keyframes fadeInLabel {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 0.7; transform: translateY(0); }
 }
 
 #startOverlay:hover #startBtn {
@@ -866,15 +946,21 @@ body::before {
   .controls {
     bottom: 16px;
     right: 16px;
-    gap: 6px;
+    gap: 8px;
+    padding: 8px 10px;
   }
   .controls button {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .controls-label {
+    bottom: 80px;
+    right: 16px;
+    font-size: 9px;
   }
   .dots {
-    bottom: 70px;
+    bottom: 72px;
     gap: 6px;
   }
   .dot { width: 6px; height: 6px; }
@@ -1136,11 +1222,12 @@ body::before {
 <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
 <div class="dots" id="dots"></div>
 
+<div class="controls-label">controles</div>
 <div class="controls">
-  <button onclick="prevSlide()" title="Anterior">←</button>
-  <button onclick="togglePause()" id="pauseBtn" title="Pausar">⏸</button>
-  <button onclick="toggleMute()" id="muteBtn" title="Som">🔇</button>
-  <button onclick="nextSlide()" title="Próximo">→</button>
+  <button onclick="prevSlide()" data-tip="Anterior (←)" title="Anterior">←</button>
+  <button onclick="togglePause()" id="pauseBtn" data-tip="Pausar (P)" title="Pausar">⏸</button>
+  <button onclick="toggleMute()" id="muteBtn" data-tip="Som (M)" title="Som">🔇</button>
+  <button onclick="nextSlide()" data-tip="Próximo (→)" title="Próximo">→</button>
 </div>
 
 <!-- Overlay inicial pra autorizar áudio (navegadores bloqueiam autoplay) -->
@@ -1395,7 +1482,10 @@ body::before {
       );
     }
     const btn = document.getElementById('muteBtn');
-    if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+    if (btn) {
+      btn.textContent = isMuted ? '🔇' : '🔊';
+      btn.setAttribute('data-tip', isMuted ? 'Som (M)' : 'Sem som (M)');
+    }
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -1451,6 +1541,7 @@ body::before {
   function togglePause() {
     isPaused = !isPaused;
     pauseBtn.textContent = isPaused ? '▶' : '⏸';
+    pauseBtn.setAttribute('data-tip', isPaused ? 'Tocar (P)' : 'Pausar (P)');
     if (!isPaused) startTimer();
     else { clearTimeout(timer); clearInterval(progressTimer); }
   }
