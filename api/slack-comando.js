@@ -1062,11 +1062,28 @@ async function processarMensagemDM(evt) {
     // Etapa única: mostra lista visual + pessoa escreve em texto livre
     // "quero 2 moleskine e 3 garrafas pretas"
     if (cat === 'brindes' && !dados.brindes_solicitados) {
-      // Se a pessoa já estava aguardando responder, captura o texto agora
-      if (estado?.etapa === 'aguardando_brindes_texto') {
-        // Salva o pedido completo em texto livre
+      // Função helper: detecta se o texto parece ser uma resposta válida
+      // (tem números OU nomes específicos de brindes, e não é só genérico)
+      function pareceListaDeBrindes(txt) {
+        const t = txt.toLowerCase();
+        // Tem algum número no texto?
+        const temNumero = /\d/.test(t);
+        // Menciona algum brinde específico?
+        const brindes = ['moleskine', 'caneta', 'container', 'garrafa', 'copo', 'egg', 'sacola', 'tapa', 'câmera', 'camera'];
+        const mencionaBrinde = brindes.some(b => t.includes(b));
+        // É texto genérico (frases como "quero abrir chamado", "preciso de brinde", etc)?
+        const ehGenerico = /chamado|brinde\b|brindes\b|solicit|pedir|abrir|nova|quero brindes/i.test(t)
+                          && !temNumero
+                          && !mencionaBrinde;
+        // Considera resposta válida se (tem número OU menciona brinde específico) E não é genérico
+        return (temNumero || mencionaBrinde) && !ehGenerico;
+      }
+
+      // Se estava esperando resposta E o texto parece resposta válida → captura
+      if (estado?.etapa === 'aguardando_brindes_texto' && pareceListaDeBrindes(texto)) {
         dados.brindes_solicitados = texto;
       } else {
+        // Senão, mostra (ou re-mostra) a pergunta com a lista
         await log('brindes_pergunta_lista');
         await setEstado(userId, { etapa: 'aguardando_brindes_texto', ...dados });
         await enviarMensagem(channel, '🎁 Quais brindes você precisa?', [
