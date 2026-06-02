@@ -1175,74 +1175,214 @@ body::before {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0.08; // volume bem suave
+      masterGain.gain.value = 0.18; // volume um pouco mais audível
+      // Reverb simulado com filtro de baixa passa
+      const reverb = audioCtx.createConvolver();
+      reverb.buffer = criarReverbBuffer(audioCtx, 2.5, 2);
+      const reverbGain = audioCtx.createGain();
+      reverbGain.gain.value = 0.35;
       masterGain.connect(audioCtx.destination);
+      masterGain.connect(reverbGain);
+      reverbGain.connect(reverb);
+      reverb.connect(audioCtx.destination);
+      window._masterReverb = { reverb, reverbGain };
       startAmbientMusic();
     } catch (e) { console.warn('Web Audio não disponível:', e); }
   }
 
+  // Cria buffer de reverb (impulse response sintético)
+  function criarReverbBuffer(ctx, duration, decay) {
+    const rate = ctx.sampleRate;
+    const length = rate * duration;
+    const buffer = ctx.createBuffer(2, length, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      for (let i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+      }
+    }
+    return buffer;
+  }
+
   function startAmbientMusic() {
     if (!audioCtx) return;
-    // Acorde de Dó maior 7 (C major 7) — sensação clean/corporativa
-    // Frequências: C4 (261.63), E4 (329.63), G4 (392.00), B4 (493.88)
-    // + Bass: C3 (130.81)
-    const harmonias = [
-      // Acorde 1: Cmaj7 (C-E-G-B)
-      { dur: 8, notes: [130.81, 261.63, 329.63, 392.00, 493.88] },
-      // Acorde 2: Fmaj7 (F-A-C-E)
-      { dur: 8, notes: [174.61, 349.23, 440.00, 523.25, 659.25] },
-      // Acorde 3: G7 (G-B-D-F)
-      { dur: 8, notes: [196.00, 392.00, 493.88, 587.33, 698.46] },
-      // Acorde 4: Am7 (A-C-E-G)
-      { dur: 8, notes: [220.00, 440.00, 523.25, 659.25, 783.99] },
+
+    // ═══════════════════════════════════════════════════════════
+    // PROGRESSÃO ÉPICA/CORPORATIVA — F#m → D → A → E (vi - IV - I - V)
+    // É a progressão de Coldplay, U2, Hans Zimmer trailers, Apple keynotes
+    // Soa esperançoso, moderno, inspirador
+    // ═══════════════════════════════════════════════════════════
+    const BPM = 75;
+    const beatDur = 60 / BPM; // ~0.8s por beat
+    const compassoDur = beatDur * 4; // 4 beats = 1 compasso
+
+    // Notas: F♯=185, A=220, C♯=277, E=330, D=294, A=440, F♯=370, E=659
+    const progressao = [
+      // F#m: F#3-A3-C#4 + bass F#2
+      { bass: 92.50, pad: [185.00, 220.00, 277.18], arp: [277.18, 369.99, 440.00, 369.99] },
+      // D:    D3-F#3-A3   + bass D2
+      { bass: 73.42, pad: [146.83, 185.00, 220.00], arp: [220.00, 293.66, 369.99, 293.66] },
+      // A:    A3-C#4-E4   + bass A2
+      { bass: 110.00, pad: [220.00, 277.18, 329.63], arp: [329.63, 440.00, 554.37, 440.00] },
+      // E:    E3-G#3-B3   + bass E2
+      { bass: 82.41, pad: [164.81, 207.65, 246.94], arp: [246.94, 329.63, 415.30, 329.63] },
     ];
 
-    let tempo = audioCtx.currentTime;
-    const tocarAcorde = (acorde, startTime) => {
-      acorde.notes.forEach((freq, i) => {
-        // Oscilador pad (onda sine — bem suave)
+    // ─── 1. PAD ATMOSFÉRICO (acordes longos respirando) ─────
+    function tocarPad(notas, startTime) {
+      notas.forEach((freq, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'sine';
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = i === 0 ? 'triangle' : 'sine';
         osc.frequency.value = freq;
 
-        // ADSR: ataque suave, sustain longo, release suave
-        const dur = acorde.dur;
-        const peakVol = i === 0 ? 0.25 : 0.12; // bass mais audível
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(peakVol, startTime + 1.5); // attack 1.5s
-        gain.gain.setValueAtTime(peakVol, startTime + dur - 2);
-        gain.gain.linearRampToValueAtTime(0, startTime + dur); // release até fim
+        // Filtro low-pass que abre e fecha (efeito "wow")
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, startTime);
+        filter.frequency.linearRampToValueAtTime(2000, startTime + compassoDur / 2);
+        filter.frequency.linearRampToValueAtTime(800, startTime + compassoDur);
+        filter.Q.value = 2;
 
-        // LFO sutil pra dar movimento (vibrato bem leve)
+        // ADSR suave
+        const peakVol = 0.16;
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(peakVol, startTime + 0.4);
+        gain.gain.setValueAtTime(peakVol, startTime + compassoDur - 0.5);
+        gain.gain.linearRampToValueAtTime(0, startTime + compassoDur);
+
+        // LFO sutil (vibrato leve)
         const lfo = audioCtx.createOscillator();
         const lfoGain = audioCtx.createGain();
-        lfo.frequency.value = 0.3 + Math.random() * 0.4;
+        lfo.frequency.value = 4 + Math.random();
         lfoGain.gain.value = 1.5;
         lfo.connect(lfoGain);
         lfoGain.connect(osc.frequency);
 
-        osc.connect(gain);
+        osc.connect(filter);
+        filter.connect(gain);
         gain.connect(masterGain);
         osc.start(startTime);
-        osc.stop(startTime + dur);
+        osc.stop(startTime + compassoDur + 0.1);
         lfo.start(startTime);
-        lfo.stop(startTime + dur);
-
-        musicNodes.push(osc, lfo);
+        lfo.stop(startTime + compassoDur + 0.1);
       });
-    };
+    }
 
-    // Toca progressão em loop
-    const tocarProgressao = () => {
+    // ─── 2. BASS (nota grave pulsando) ─────────────────────
+    function tocarBass(freq, startTime) {
+      // Toca 2x no compasso (no beat 1 e beat 3)
+      [0, 2].forEach(beatOffset => {
+        const t = startTime + beatOffset * beatDur;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        filter.type = 'lowpass';
+        filter.frequency.value = 400;
+
+        const peakVol = 0.5;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(peakVol, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + beatDur * 1.5);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + beatDur * 2);
+      });
+    }
+
+    // ─── 3. ARPEJO MELÓDICO (notas dançantes) ──────────────
+    function tocarArpejo(notas, startTime) {
+      notas.forEach((freq, i) => {
+        const t = startTime + (i * beatDur);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.value = freq * 2; // oitava acima — fica brilhante
+
+        const peakVol = 0.08;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(peakVol, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + beatDur * 0.8);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + beatDur);
+      });
+    }
+
+    // ─── 4. KICK SUTIL (batida grave - "thump") ────────────
+    function tocarKick(startTime) {
+      // No beat 1 de cada compasso
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, startTime);
+      osc.frequency.exponentialRampToValueAtTime(40, startTime + 0.15);
+
+      gain.gain.setValueAtTime(0.4, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(startTime);
+      osc.stop(startTime + 0.2);
+    }
+
+    // ─── 5. SHIMMER (toque cristalino ocasional) ──────────
+    function tocarShimmer(startTime, freq) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq * 4; // 2 oitavas acima
+
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.04, startTime + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.5);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(startTime);
+      osc.stop(startTime + 1.5);
+    }
+
+    // ─── ORQUESTRAÇÃO ─────────────────────────────────────
+    let cicloCount = 0;
+    function tocarProgressao() {
       let t = audioCtx.currentTime + 0.1;
-      harmonias.forEach(acorde => {
-        tocarAcorde(acorde, t);
-        t += acorde.dur;
+      progressao.forEach((acorde, idx) => {
+        // Pad sempre toca (camada base)
+        tocarPad(acorde.pad, t);
+        // Bass sempre toca (groove)
+        tocarBass(acorde.bass, t);
+        // Kick no beat 1
+        tocarKick(t);
+
+        // Arpejo: começa a tocar a partir do 2º ciclo (mais variação)
+        if (cicloCount >= 1) {
+          tocarArpejo(acorde.arp, t);
+        }
+
+        // Shimmer ocasional no início de cada acorde (a partir do 3º ciclo)
+        if (cicloCount >= 2 && idx % 2 === 0) {
+          tocarShimmer(t, acorde.arp[0]);
+        }
+
+        t += compassoDur;
       });
-      // Reagendar pro próximo ciclo (32s)
-      setTimeout(tocarProgressao, 32 * 1000);
-    };
+      cicloCount++;
+      // Reagendar pro próximo ciclo (4 compassos)
+      setTimeout(tocarProgressao, compassoDur * 4 * 1000);
+    }
     tocarProgressao();
   }
 
@@ -1250,7 +1390,7 @@ body::before {
     isMuted = !isMuted;
     if (masterGain) {
       masterGain.gain.linearRampToValueAtTime(
-        isMuted ? 0 : 0.08,
+        isMuted ? 0 : 0.18,
         audioCtx.currentTime + 0.3
       );
     }
