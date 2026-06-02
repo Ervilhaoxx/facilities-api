@@ -1035,6 +1035,7 @@ async function processarMensagemDM(evt) {
     // Preservar dados já coletados em interações anteriores
     if (estado?.item_brinde) dados.item_brinde = estado.item_brinde;
     if (estado?.quantidade) dados.quantidade = estado.quantidade;
+    if (estado?.brindes_solicitados) dados.brindes_solicitados = estado.brindes_solicitados;
     if (estado?.transportadora) dados.transportadora = estado.transportadora;
     if (estado?.destinatario_envio) dados.destinatario_envio = estado.destinatario_envio;
     if (estado?.detalhes_extras) dados.detalhes_extras = estado.detalhes_extras;
@@ -1058,59 +1059,38 @@ async function processarMensagemDM(evt) {
     }
 
     // ═══ 🎁 BRINDES ═══════════════════════════════════════
-    // Etapas: (1) escolher item via botão → (2) digitar quantidade
-    if (cat === 'brindes' && !dados.item_brinde) {
-      await log('brindes_pergunta_item');
-      await setEstado(userId, { etapa: 'aguardando_item_brinde', ...dados });
-      await enviarMensagem(channel, '🎁 Qual brinde você precisa?', [
-        { type: 'header', text: { type: 'plain_text', text: '🎁 Qual brinde?', emoji: true } },
-        { type: 'section', text: { type: 'mrkdwn', text: 'Escolhe o item da nossa lista:' } },
-        {
-          type: 'actions',
-          elements: [
-            { type: 'button', text: { type: 'plain_text', text: '📓 Moleskine', emoji: true }, action_id: 'fac_brd_moleskine', value: 'Moleskine' },
-            { type: 'button', text: { type: 'plain_text', text: '🖤 Container Preto', emoji: true }, action_id: 'fac_brd_cpreto', value: 'Container Preto' },
-            { type: 'button', text: { type: 'plain_text', text: '🧡 Container Laranja', emoji: true }, action_id: 'fac_brd_claranja', value: 'Container Laranja' },
-            { type: 'button', text: { type: 'plain_text', text: '🤍 Container Branco', emoji: true }, action_id: 'fac_brd_cbranco', value: 'Container Branco' },
-            { type: 'button', text: { type: 'plain_text', text: '💜 Container Roxo', emoji: true }, action_id: 'fac_brd_croxo', value: 'Container Roxo' },
-          ]
-        },
-        {
-          type: 'actions',
-          elements: [
-            { type: 'button', text: { type: 'plain_text', text: '🤍 Garrafa Branca', emoji: true }, action_id: 'fac_brd_gbranca', value: 'Garrafa Branca' },
-            { type: 'button', text: { type: 'plain_text', text: '🖤 Garrafa Preta', emoji: true }, action_id: 'fac_brd_gpreta', value: 'Garrafa Preta' },
-            { type: 'button', text: { type: 'plain_text', text: '🥚 Copo Egg Branco', emoji: true }, action_id: 'fac_brd_cebranco', value: 'Copo Egg Branco' },
-            { type: 'button', text: { type: 'plain_text', text: '🥚 Copo Egg Preto', emoji: true }, action_id: 'fac_brd_cepreto', value: 'Copo Egg Preto' },
-            { type: 'button', text: { type: 'plain_text', text: '🛍️ Sacola Preta', emoji: true }, action_id: 'fac_brd_sacola', value: 'Sacola Preta' },
-          ]
-        },
-        {
-          type: 'actions',
-          elements: [
-            { type: 'button', text: { type: 'plain_text', text: '📷 Tapa Câmera', emoji: true }, action_id: 'fac_brd_tapa', value: 'Tapa Câmera' },
-            { type: 'button', text: { type: 'plain_text', text: '🖊️ Caneta', emoji: true }, action_id: 'fac_brd_caneta', value: 'Caneta' },
-          ]
-        },
-        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-      ]);
-      return;
-    }
-
-    if (cat === 'brindes' && dados.item_brinde && !dados.quantidade) {
-      const numMatch = texto.match(/\d+/);
-      if (numMatch) {
-        dados.quantidade = parseInt(numMatch[0]);
-        // Captura também contexto extra (ex: "10 pra um evento dia 20")
-        if (texto.replace(/\d+/g, '').trim().length > 3) {
-          dados.detalhes_extras = texto;
-        }
+    // Etapa única: mostra lista visual + pessoa escreve em texto livre
+    // "quero 2 moleskine e 3 garrafas pretas"
+    if (cat === 'brindes' && !dados.brindes_solicitados) {
+      // Se a pessoa já estava aguardando responder, captura o texto agora
+      if (estado?.etapa === 'aguardando_brindes_texto') {
+        // Salva o pedido completo em texto livre
+        dados.brindes_solicitados = texto;
       } else {
-        await log('brindes_pergunta_quantidade');
-        await setEstado(userId, { etapa: 'aguardando_quantidade_brinde', ...dados });
-        await enviarMensagem(channel, '📦 Quantos você precisa?', [
-          { type: 'header', text: { type: 'plain_text', text: '📦 Quantidade?', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: `Você escolheu *${dados.item_brinde}*.\n\nMe diga a quantidade de brindes que você gostaria de solicitar.\n\n_Pode digitar só o número (ex: 5) ou com mais detalhes (ex: "10 pra um evento dia 20")._` } },
+        await log('brindes_pergunta_lista');
+        await setEstado(userId, { etapa: 'aguardando_brindes_texto', ...dados });
+        await enviarMensagem(channel, '🎁 Quais brindes você precisa?', [
+          { type: 'header', text: { type: 'plain_text', text: '🎁 Brindes disponíveis', emoji: true } },
+          { type: 'section', text: { type: 'mrkdwn', text: '*Confira nossa lista:*' } },
+          {
+            type: 'section',
+            fields: [
+              { type: 'mrkdwn', text: '📓 *Moleskine*' },
+              { type: 'mrkdwn', text: '🖊️ *Caneta*' },
+              { type: 'mrkdwn', text: '🖤 *Container Preto*' },
+              { type: 'mrkdwn', text: '🧡 *Container Laranja*' },
+              { type: 'mrkdwn', text: '🤍 *Container Branco*' },
+              { type: 'mrkdwn', text: '💜 *Container Roxo*' },
+              { type: 'mrkdwn', text: '🤍 *Garrafa Branca*' },
+              { type: 'mrkdwn', text: '🖤 *Garrafa Preta*' },
+              { type: 'mrkdwn', text: '🥚 *Copo Egg Branco*' },
+              { type: 'mrkdwn', text: '🥚 *Copo Egg Preto*' },
+              { type: 'mrkdwn', text: '🛍️ *Sacola Preta*' },
+              { type: 'mrkdwn', text: '📷 *Tapa Câmera*' },
+            ]
+          },
+          { type: 'divider' },
+          { type: 'section', text: { type: 'mrkdwn', text: '✏️ *Me diga quais brindes e quantos você quer.*\n\nPode pedir vários de uma vez, por exemplo:\n• _"Quero 2 moleskines e 3 garrafas pretas"_\n• _"5 canetas e 1 sacola preta"_\n• _"10 moleskines para um evento dia 20"_' } },
           { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
         ]);
         return;
@@ -1265,6 +1245,12 @@ async function enviarResumoParaConfirmacao(channel, userId, dados) {
 
   // Blocks adicionais pros campos longos (fora do "fields" que limita)
   const extraBlocks = [];
+  if (dados.brindes_solicitados) {
+    extraBlocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: `*🎁 Brindes solicitados:*\n${dados.brindes_solicitados}` }
+    });
+  }
   if (dados.item_envio) {
     extraBlocks.push({
       type: 'section',
@@ -1283,7 +1269,7 @@ async function enviarResumoParaConfirmacao(channel, userId, dados) {
       text: { type: 'mrkdwn', text: `*📝 Detalhes:*\n${dados.detalhes_extras}` }
     });
   }
-  if (dados.descricao && !dados.detalhes_extras && !dados.destinatario_envio && !dados.item_envio) {
+  if (dados.descricao && !dados.detalhes_extras && !dados.destinatario_envio && !dados.item_envio && !dados.brindes_solicitados) {
     extraBlocks.push({
       type: 'section',
       text: { type: 'mrkdwn', text: `*📝 Detalhes:*\n${dados.descricao}` }
@@ -1392,30 +1378,6 @@ async function tratarBotaoFluxoConversacional(body, action) {
     return;
   }
 
-  // Botões de brindes (fac_brd_<item>) — sub-fluxo brindes
-  if (actionId.startsWith('fac_brd_')) {
-    await log('brinde_clicado');
-    const itemBrinde = action.value;
-    const estado = await getEstado(userId);
-    if (!estado) {
-      await enviarMensagem(channel, '😕 Não consegui encontrar sua solicitação. Manda nova mensagem?');
-      return;
-    }
-    const dadosAtualizados = { ...estado, item_brinde: itemBrinde, etapa: 'aguardando_quantidade' };
-    await setEstado(userId, dadosAtualizados);
-    // Atualiza a mensagem dos botões pra mostrar escolha feita
-    await atualizarMensagem(channel, body.message?.ts, `🎁 ${itemBrinde} selecionado`, [
-      { type: 'section', text: { type: 'mrkdwn', text: `✅ *Brinde:* ${itemBrinde}` } }
-    ]);
-    // Pergunta a quantidade
-    await enviarMensagem(channel, '📦 Quantos você precisa?', [
-      { type: 'header', text: { type: 'plain_text', text: '📦 Quantidade?', emoji: true } },
-      { type: 'section', text: { type: 'mrkdwn', text: `Você escolheu *${itemBrinde}*.\n\nQuantos você precisa? Pode digitar só o número (ex: 5) ou com mais detalhe (ex: "preciso de 10 pra um evento dia 20").` } },
-      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-    ]);
-    return;
-  }
-
   if (actionId === 'fac_confirmar') {
     await log('confirmar_inicio');
     let dados;
@@ -1429,6 +1391,10 @@ async function tratarBotaoFluxoConversacional(body, action) {
     try {
       const dadosExtras = {};
       if (dados.transportadora) dadosExtras.transportadora = dados.transportadora;
+      if (dados.brindes_solicitados) {
+        dadosExtras.brindes_solicitados = dados.brindes_solicitados;
+        dadosExtras.subcategoria = 'Brindes diversos'; // pra aparecer no admin
+      }
       if (dados.item_brinde) {
         dadosExtras.item_brinde = dados.item_brinde;
         dadosExtras.subcategoria = dados.item_brinde;
@@ -1441,8 +1407,11 @@ async function tratarBotaoFluxoConversacional(body, action) {
       // Monta a descrição final limpa (SEM DUPLICAR informação)
       let descricaoFinal = '';
 
-      if (dados.categoria === 'brindes' && dados.item_brinde) {
-        // BRINDES: item + quantidade + observações se houver
+      if (dados.categoria === 'brindes' && dados.brindes_solicitados) {
+        // BRINDES (novo formato): lista em texto livre
+        descricaoFinal = `Brindes solicitados:\n${dados.brindes_solicitados}`;
+      } else if (dados.categoria === 'brindes' && dados.item_brinde) {
+        // BRINDES (formato antigo): item + quantidade
         descricaoFinal = `Item: ${dados.item_brinde}\nQuantidade: ${dados.quantidade || 'não informada'}`;
         if (dados.detalhes_extras) {
           descricaoFinal += `\n\nObservações: ${dados.detalhes_extras}`;
