@@ -668,6 +668,12 @@ body::before {
   transform: scale(1.1);
 }
 
+#startOverlay:hover #startBtn {
+  background: #7215E9 !important;
+  transform: scale(1.02);
+  box-shadow: 0 12px 40px rgba(102, 19, 208, 0.6) !important;
+}
+
 @media (max-width: 900px) {
   .slide { padding: 32px 24px; }
   .slide-mockup { grid-template-columns: 1fr; gap: 32px; }
@@ -901,16 +907,134 @@ body::before {
 <div class="controls">
   <button onclick="prevSlide()" title="Anterior">←</button>
   <button onclick="togglePause()" id="pauseBtn" title="Pausar">⏸</button>
+  <button onclick="toggleMute()" id="muteBtn" title="Som">🔇</button>
   <button onclick="nextSlide()" title="Próximo">→</button>
 </div>
 
+<!-- Overlay inicial pra autorizar áudio (navegadores bloqueiam autoplay) -->
+<div id="startOverlay" style="position:fixed;inset:0;background:rgba(11,13,25,0.92);backdrop-filter:blur(12px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:opacity 600ms;">
+  <div style="text-align:center; max-width:480px; padding:40px;">
+    <div style="font-family:'Funnel Display'; font-size:14px; font-weight:500; letter-spacing:0.3em; text-transform:uppercase; color:#FE8F1C; margin-bottom:24px;">apresentação</div>
+    <div style="font-family:'Funnel Display'; font-size:56px; font-weight:700; line-height:1; letter-spacing:-0.025em; background: linear-gradient(135deg, #FFFFFF 0%, #E2D0FA 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom:32px;">Facilities,<br>agora simples.</div>
+    <div id="startBtn" style="display:inline-flex;align-items:center;gap:12px;background:#6613D0;color:#fff;padding:16px 32px;border-radius:999px;font-family:'Poppins';font-weight:600;font-size:16px;transition:all 300ms; box-shadow:0 8px 32px rgba(102,19,208,0.4);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      Iniciar apresentação
+    </div>
+    <div style="font-family:'Poppins'; font-size:13px; color:rgba(226,208,250,0.7); margin-top:24px; line-height:1.6;">
+      Clique pra começar com som ambiente.<br>
+      <span style="opacity:0.6;">Pode tirar o som depois no botão 🔇</span>
+    </div>
+  </div>
+</div>
+
 <script>
+  // ═════════════════════════════════════════════════════════════
+  //  MÚSICA AMBIENTE — gerada por Web Audio API
+  //  Estilo: pad suave + acorde harmônico + arpejos sutis
+  //  Sem direitos autorais, totalmente em código
+  // ═════════════════════════════════════════════════════════════
+  let audioCtx = null;
+  let masterGain = null;
+  let isMuted = true; // começa mutado, ativa só quando clicar "Iniciar"
+  let musicNodes = [];
+
+  function initAudio() {
+    if (audioCtx) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.08; // volume bem suave
+      masterGain.connect(audioCtx.destination);
+      startAmbientMusic();
+    } catch (e) { console.warn('Web Audio não disponível:', e); }
+  }
+
+  function startAmbientMusic() {
+    if (!audioCtx) return;
+    // Acorde de Dó maior 7 (C major 7) — sensação clean/corporativa
+    // Frequências: C4 (261.63), E4 (329.63), G4 (392.00), B4 (493.88)
+    // + Bass: C3 (130.81)
+    const harmonias = [
+      // Acorde 1: Cmaj7 (C-E-G-B)
+      { dur: 8, notes: [130.81, 261.63, 329.63, 392.00, 493.88] },
+      // Acorde 2: Fmaj7 (F-A-C-E)
+      { dur: 8, notes: [174.61, 349.23, 440.00, 523.25, 659.25] },
+      // Acorde 3: G7 (G-B-D-F)
+      { dur: 8, notes: [196.00, 392.00, 493.88, 587.33, 698.46] },
+      // Acorde 4: Am7 (A-C-E-G)
+      { dur: 8, notes: [220.00, 440.00, 523.25, 659.25, 783.99] },
+    ];
+
+    let tempo = audioCtx.currentTime;
+    const tocarAcorde = (acorde, startTime) => {
+      acorde.notes.forEach((freq, i) => {
+        // Oscilador pad (onda sine — bem suave)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        // ADSR: ataque suave, sustain longo, release suave
+        const dur = acorde.dur;
+        const peakVol = i === 0 ? 0.25 : 0.12; // bass mais audível
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(peakVol, startTime + 1.5); // attack 1.5s
+        gain.gain.setValueAtTime(peakVol, startTime + dur - 2);
+        gain.gain.linearRampToValueAtTime(0, startTime + dur); // release até fim
+
+        // LFO sutil pra dar movimento (vibrato bem leve)
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.frequency.value = 0.3 + Math.random() * 0.4;
+        lfoGain.gain.value = 1.5;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+        lfo.start(startTime);
+        lfo.stop(startTime + dur);
+
+        musicNodes.push(osc, lfo);
+      });
+    };
+
+    // Toca progressão em loop
+    const tocarProgressao = () => {
+      let t = audioCtx.currentTime + 0.1;
+      harmonias.forEach(acorde => {
+        tocarAcorde(acorde, t);
+        t += acorde.dur;
+      });
+      // Reagendar pro próximo ciclo (32s)
+      setTimeout(tocarProgressao, 32 * 1000);
+    };
+    tocarProgressao();
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    if (masterGain) {
+      masterGain.gain.linearRampToValueAtTime(
+        isMuted ? 0 : 0.08,
+        audioCtx.currentTime + 0.3
+      );
+    }
+    const btn = document.getElementById('muteBtn');
+    if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //  CONTROLE DOS SLIDES
+  // ═════════════════════════════════════════════════════════════
   const slides = document.querySelectorAll('.slide');
   const dotsContainer = document.getElementById('dots');
   const progressFill = document.getElementById('progressFill');
   const pauseBtn = document.getElementById('pauseBtn');
   let current = 0;
-  let isPaused = false;
+  let isPaused = true; // começa pausado até clicar em "Iniciar"
   let timer = null;
   let progressTimer = null;
 
@@ -959,12 +1083,31 @@ body::before {
     else { clearTimeout(timer); clearInterval(progressTimer); }
   }
 
-  startTimer();
+  // ═════════════════════════════════════════════════════════════
+  //  OVERLAY INICIAL — clique pra iniciar com som
+  // ═════════════════════════════════════════════════════════════
+  const startOverlay = document.getElementById('startOverlay');
+  startOverlay.addEventListener('click', () => {
+    // Inicia áudio (requer interação do usuário pelo navegador)
+    initAudio();
+    isMuted = false;
+    document.getElementById('muteBtn').textContent = '🔊';
 
+    // Inicia a apresentação
+    isPaused = false;
+    startTimer();
+
+    // Some o overlay
+    startOverlay.style.opacity = '0';
+    setTimeout(() => { startOverlay.style.display = 'none'; }, 600);
+  });
+
+  // Atalhos
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
     if (e.key === 'p' || e.key === 'P') togglePause();
+    if (e.key === 'm' || e.key === 'M') toggleMute();
     if (e.key === 'f' || e.key === 'F') {
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen();
@@ -972,7 +1115,8 @@ body::before {
   });
 
   document.addEventListener('click', (e) => {
-    if (e.target.closest('.controls') || e.target.closest('.dot')) return;
+    if (e.target.closest('.controls') || e.target.closest('.dot') || e.target.closest('#startOverlay')) return;
+    if (startOverlay.style.display !== 'none') return; // só avança depois de iniciar
     next();
   });
 </script>
