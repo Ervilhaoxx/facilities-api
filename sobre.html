@@ -1721,23 +1721,12 @@ body::before {
     timer = setTimeout(() => { next(); }, duration);
   }
 
-  // Listener de scroll: se rolar, esconde hint + pausa auto-avanço temporariamente
-  let scrollPauseTimeout = null;
-  let userIsScrolling = false;
+  // Listener de scroll: só pra esconder o hint quando rolar
   slides.forEach(slide => {
     slide.addEventListener('scroll', () => {
       checkScrollHint();
-      // Pausa auto-avanço enquanto rola
-      if (!userIsScrolling) {
-        userIsScrolling = true;
-        clearTimeout(timer);
-        clearInterval(progressTimer);
-      }
-      clearTimeout(scrollPauseTimeout);
-      scrollPauseTimeout = setTimeout(() => {
-        userIsScrolling = false;
-        if (!isPaused) startTimer();
-      }, 2500); // 2.5s após parar de rolar, retoma
+      // O timer continua rodando normalmente — o usuário vê a barra de progresso
+      // e sabe que o slide vai avançar. Se quiser pausar, usa o botão de pausa.
     });
   });
 
