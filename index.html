@@ -1015,8 +1015,10 @@
   function loadMeusChamados() {
     const user = auth.currentUser;
     if (!user) return;
-    const CATLABELS = { manutencao:'🔧 Manutenção', reforma:'🏗️ Reforma & Melhoria', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza', seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas' };
-    const q = query(collection(db, 'tickets'), where('userId', '==', user.uid), orderBy('data_abertura', 'desc'));
+    const CATLABELS = { manutencao:'🔧 Manutenção', reforma:'🏗️ Reforma & Melhoria', infraestrutura:'🪑 Infraestrutura', limpeza:'🧹 Limpeza', seguranca:'🔐 Segurança', brindes:'🎁 Brindes', suprimentos:'📦 Suprimentos', plataformas:'📱 Plataformas', logistica:'📦 Logística', acessos:'🔑 Acessos', outros:'📋 Outros' };
+    // Busca por email (cobre tanto chamados abertos pelo site quanto pelo Slack)
+    const userEmail = user.email;
+    const q = query(collection(db, 'tickets'), where('email', '==', userEmail), orderBy('data_abertura', 'desc'));
     unsubMeusChamados = onSnapshot(q, (snap) => {
       const list = document.getElementById('mc-list');
       if (snap.empty) { list.innerHTML = '<div class="mc-empty"><div>📭</div><p>Você ainda não abriu nenhum chamado.</p></div>'; return; }
@@ -1031,17 +1033,28 @@
           if (t.transportadora) rows += '<div><span class="mc-lbl">Transportadora</span><br><b style="color:var(--purple);">' + t.transportadora + '</b></div>';
           if (t.destinatario) rows += '<div><span class="mc-lbl">Destinatario</span><br><b>' + t.destinatario + '</b></div>';
           if (t.item_enviado) rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Item</span><br>' + t.item_enviado + '</div>';
+          if (t.item_envio) rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Item</span><br>' + t.item_envio + '</div>';
+          if (t.destinatario_envio) rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Destinatário</span><br><span style="color:var(--ink2);">' + t.destinatario_envio + '</span></div>';
           if (t.endereco_envio && typeof t.endereco_envio === 'string') rows += '<div style="grid-column:1/-1"><span class="mc-lbl">Endereco</span><br><span style="color:var(--ink2);">' + t.endereco_envio + '</span></div>';
           if (t.data_envio_desejada) rows += '<div><span class="mc-lbl">Data desejada</span><br>' + t.data_envio_desejada + '</div>';
           if (t.rastreio) rows += '<div style="grid-column:1/-1;background:rgba(102,19,208,0.06);border-radius:6px;padding:6px 8px;"><span class="mc-lbl">Codigo de Rastreio</span><br><b style="color:var(--purple);font-size:0.9rem;letter-spacing:0.08em;">' + t.rastreio + '</b></div>';
+          if (rows) extraInfo = '<div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.78rem;">' + rows + '</div>';
+        } else if (t.categoria === 'brindes' && (t.item_brinde || t.quantidade)) {
+          let rows = '';
+          if (t.item_brinde) rows += '<div><span class="mc-lbl">Brinde</span><br><b>' + t.item_brinde + '</b></div>';
+          if (t.quantidade) rows += '<div><span class="mc-lbl">Quantidade</span><br><b>' + t.quantidade + '</b></div>';
           if (rows) extraInfo = '<div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.78rem;">' + rows + '</div>';
         } else if (t.descricao) {
           const desc = t.descricao.length > 120 ? t.descricao.substring(0,120) + '...' : t.descricao;
           extraInfo = '<div style="margin-top:8px;font-size:0.8rem;color:var(--ink2);background:var(--surface2);padding:8px 12px;border-radius:8px;line-height:1.5;border-left:3px solid var(--border);">' + desc + '</div>';
         }
+        // Indicador de origem (Slack vs Site)
+        const origemBadge = t.origem === 'slack'
+          ? '<span style="font-size:0.7rem;background:rgba(102,19,208,0.1);color:var(--purple);padding:2px 8px;border-radius:999px;font-weight:600;margin-left:6px;">via Slack</span>'
+          : '';
         return `<div class="mc-card">
           <div class="mc-card-top">
-            <div><div class="mc-id">#${t.id}</div><div class="mc-titulo">${t.titulo||''}</div></div>
+            <div><div class="mc-id">#${t.id}${origemBadge}</div><div class="mc-titulo">${t.titulo||''}</div></div>
             <span class="mc-status ${statusClass}">${t.status||''}</span>
           </div>
           <div class="mc-meta">
