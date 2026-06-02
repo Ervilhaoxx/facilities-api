@@ -1013,8 +1013,8 @@ async function processarMensagemDM(evt) {
       return;
     }
 
-    // Caso 3: Tem info suficiente → resumo com botões
-    await log('preparando_resumo');
+    // Caso 3: Tem info suficiente → segue pro sub-fluxo da categoria
+    await log('subfluxo_inicio', { cat: analise.categoria });
     const dados = {
       categoria: analise.categoria,
       titulo: analise.titulo,
