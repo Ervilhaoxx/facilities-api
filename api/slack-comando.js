@@ -1026,27 +1026,45 @@ async function processarMensagemDM(evt) {
     // ════════════════════════════════════════════════════
     //  SUB-FLUXOS POR CATEGORIA — coletam detalhes extras
     // ════════════════════════════════════════════════════
-    // O estado controla em qual etapa do sub-fluxo a pessoa está.
-    // Cada categoria tem suas próprias etapas, e quando todas estão
-    // preenchidas, mostramos o resumo final.
+    // Para cada categoria, fazemos perguntas específicas que coletam
+    // todas as informações que o time precisa pra resolver o chamado.
+    // Tudo é preservado no estado entre mensagens.
 
     const cat = analise.categoria;
-    const etapaAtual = estado?.etapa;
 
-    // Preservar dados já coletados do estado anterior
+    // Preservar dados já coletados em interações anteriores
     if (estado?.item_brinde) dados.item_brinde = estado.item_brinde;
     if (estado?.quantidade) dados.quantidade = estado.quantidade;
     if (estado?.transportadora) dados.transportadora = estado.transportadora;
     if (estado?.destinatario_envio) dados.destinatario_envio = estado.destinatario_envio;
     if (estado?.detalhes_extras) dados.detalhes_extras = estado.detalhes_extras;
 
-    // ─── BRINDES: 1º item, 2º quantidade ───
+    // Helper: pergunta livre por detalhes específicos da categoria
+    async function pedirDetalhes(etapaName, header, instrucao) {
+      // Se já está aguardando esses detalhes, captura o texto
+      if (estado?.etapa === etapaName) {
+        dados.detalhes_extras = texto;
+        return false; // segue para próximo passo / resumo
+      }
+      // Senão, faz a pergunta
+      await log(`${cat}_pergunta_detalhes`);
+      await setEstado(userId, { etapa: etapaName, ...dados });
+      await enviarMensagem(channel, header, [
+        { type: 'header', text: { type: 'plain_text', text: header, emoji: true } },
+        { type: 'section', text: { type: 'mrkdwn', text: instrucao } },
+        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
+      ]);
+      return true; // bloqueia, espera resposta
+    }
+
+    // ═══ 🎁 BRINDES ═══════════════════════════════════════
+    // Etapas: (1) escolher item via botão → (2) digitar quantidade
     if (cat === 'brindes' && !dados.item_brinde) {
-      await log('brinde_pergunta_item');
+      await log('brindes_pergunta_item');
       await setEstado(userId, { etapa: 'aguardando_item_brinde', ...dados });
       await enviarMensagem(channel, '🎁 Qual brinde você precisa?', [
         { type: 'header', text: { type: 'plain_text', text: '🎁 Qual brinde?', emoji: true } },
-        { type: 'section', text: { type: 'mrkdwn', text: 'Escolhe o item da nossa lista de brindes:' } },
+        { type: 'section', text: { type: 'mrkdwn', text: 'Escolhe o item da nossa lista:' } },
         {
           type: 'actions',
           elements: [
@@ -1080,30 +1098,33 @@ async function processarMensagemDM(evt) {
     }
 
     if (cat === 'brindes' && dados.item_brinde && !dados.quantidade) {
-      // Pessoa veio com texto após escolher item — tenta extrair número
       const numMatch = texto.match(/\d+/);
       if (numMatch) {
         dados.quantidade = parseInt(numMatch[0]);
+        // Captura também contexto extra (ex: "10 pra um evento dia 20")
+        if (texto.replace(/\d+/g, '').trim().length > 3) {
+          dados.detalhes_extras = texto;
+        }
       } else {
-        // ainda não veio número, pergunta
-        await log('brinde_pergunta_quantidade');
-        await setEstado(userId, { etapa: 'aguardando_quantidade', ...dados });
+        await log('brindes_pergunta_quantidade');
+        await setEstado(userId, { etapa: 'aguardando_quantidade_brinde', ...dados });
         await enviarMensagem(channel, '📦 Quantos você precisa?', [
           { type: 'header', text: { type: 'plain_text', text: '📦 Quantidade?', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: `Você escolheu *${dados.item_brinde}*.\n\nQuantos você precisa? Pode digitar só o número (ex: 5) ou com mais detalhe (ex: "preciso de 10 pra um evento").` } },
+          { type: 'section', text: { type: 'mrkdwn', text: `Você escolheu *${dados.item_brinde}*.\n\nMe diga a quantidade de brindes que você gostaria de solicitar.\n\n_Pode digitar só o número (ex: 5) ou com mais detalhes (ex: "10 pra um evento dia 20")._` } },
           { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
         ]);
         return;
       }
     }
 
-    // ─── LOGÍSTICA: 1º transportadora, 2º destinatário ───
+    // ═══ 📦 LOGÍSTICA ═════════════════════════════════════
+    // Etapas: (1) transportadora via botão → (2) dados destinatário
     if (cat === 'logistica' && !dados.transportadora) {
-      await log('log_pergunta_transp');
+      await log('logistica_pergunta_transp');
       await setEstado(userId, { etapa: 'aguardando_transportadora', ...dados });
       await enviarMensagem(channel, '📦 Qual transportadora?', [
         { type: 'header', text: { type: 'plain_text', text: '📦 Qual transportadora?', emoji: true } },
-        { type: 'section', text: { type: 'mrkdwn', text: 'Por onde você quer enviar?' } },
+        { type: 'section', text: { type: 'mrkdwn', text: 'Por onde você quer fazer o envio?' } },
         {
           type: 'actions',
           elements: [
@@ -1118,77 +1139,72 @@ async function processarMensagemDM(evt) {
     }
 
     if (cat === 'logistica' && dados.transportadora && !dados.destinatario_envio) {
-      // Se já tem transportadora mas vem texto, captura como destinatário
-      if (estado?.etapa === 'aguardando_destinatario' || texto.length > 20) {
+      if (estado?.etapa === 'aguardando_destinatario') {
         dados.destinatario_envio = texto;
       } else {
-        await log('log_pergunta_destinatario');
+        await log('logistica_pergunta_destinatario');
         await setEstado(userId, { etapa: 'aguardando_destinatario', ...dados });
-        await enviarMensagem(channel, '📍 Pra quem e pra onde?', [
-          { type: 'header', text: { type: 'plain_text', text: '📍 Detalhes do envio', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: `Via *${dados.transportadora}*.\n\nMe passa os dados completos do envio:\n\n• Nome completo do destinatário\n• Endereço (rua, número, bairro, cidade, estado, CEP)\n• Telefone\n• CPF (se for DHL)\n\nPode mandar tudo em uma mensagem só.` } },
+        await enviarMensagem(channel, '📍 Dados do destinatário', [
+          { type: 'header', text: { type: 'plain_text', text: '📍 Dados do envio', emoji: true } },
+          { type: 'section', text: { type: 'mrkdwn', text: `Via *${dados.transportadora}*.\n\nMe passa os dados completos do envio em uma única mensagem:\n\n• *Nome completo* do destinatário\n• *Endereço* (rua, número, complemento, bairro)\n• *Cidade, Estado, CEP*\n• *Telefone* com DDD\n• *CPF* ${dados.transportadora === 'DHL' ? '*(obrigatório para DHL)*' : '(opcional)'}\n• *O que será enviado* (ex: notebook, brindes, documento)` } },
           { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
         ]);
         return;
       }
     }
 
-    // ─── ACESSOS: texto livre com detalhes ───
-    if (cat === 'acessos' && !dados.detalhes_extras) {
-      if (estado?.etapa === 'aguardando_detalhes_acessos') {
-        dados.detalhes_extras = texto;
-      } else if (texto.length > 60) {
-        // Se a primeira mensagem já é longa, considera que tem detalhes
-        dados.detalhes_extras = texto;
-      } else {
-        await log('acessos_pergunta_detalhes');
-        await setEstado(userId, { etapa: 'aguardando_detalhes_acessos', ...dados });
-        await enviarMensagem(channel, '🔑 Me dá mais detalhes', [
-          { type: 'header', text: { type: 'plain_text', text: '🔑 Qual acesso você precisa?', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: 'Pra te ajudar melhor, me passa:\n\n• Qual *plataforma/sistema* (ex: Google, Slack, Pipefy, Sankhya, VPN, etc.)\n• Qual *ação* (criar, remover, alterar permissão, recuperar senha)\n• Se for pra outra pessoa, *nome e email completos*' } },
-          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-        ]);
-        return;
-      }
+    // ═══ 🔑 ACESSOS ═══════════════════════════════════════
+    if (cat === 'acessos') {
+      const bloqueia = await pedirDetalhes(
+        'aguardando_detalhes_acessos',
+        '🔑 Qual acesso você precisa?',
+        'Pra te ajudar, me passa em uma mensagem:\n\n• *Plataforma/sistema* (ex: Google, Slack, Pipefy, Sankhya, VPN, Datalens)\n• *Ação desejada* (criar acesso, remover, alterar permissão, recuperar senha)\n• *Para quem* (você mesmo ou outra pessoa — nesse caso, nome completo e email)\n• *Nível de permissão* necessário, se souber'
+      );
+      if (bloqueia) return;
     }
 
-    // ─── SUPRIMENTOS: texto livre com detalhes do item ───
-    if (cat === 'suprimentos' && !dados.detalhes_extras) {
-      if (estado?.etapa === 'aguardando_detalhes_supr') {
-        dados.detalhes_extras = texto;
-      } else if (texto.length > 60) {
-        dados.detalhes_extras = texto;
-      } else {
-        await log('supr_pergunta_detalhes');
-        await setEstado(userId, { etapa: 'aguardando_detalhes_supr', ...dados });
-        await enviarMensagem(channel, '📎 Me dá mais detalhes', [
-          { type: 'header', text: { type: 'plain_text', text: '📎 Qual item exatamente?', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: 'Pra agilizar a compra, me passa:\n\n• *Item específico* (ex: mouse sem fio, fone com microfone, caneta azul)\n• *Modelo/marca* preferida (se tiver)\n• *Quantidade* que precisa\n• *Link* do produto (opcional, mas ajuda muito)' } },
-          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-        ]);
-        return;
-      }
+    // ═══ 📎 SUPRIMENTOS ═══════════════════════════════════
+    if (cat === 'suprimentos') {
+      const bloqueia = await pedirDetalhes(
+        'aguardando_detalhes_supr',
+        '📎 Detalhes do item',
+        'Pra agilizar a compra, me passa em uma mensagem:\n\n• *Item específico* (ex: mouse sem fio Logitech, fone com microfone, caneta azul)\n• *Modelo/marca* preferida (se tiver)\n• *Quantidade* que precisa\n• *Link* do produto (opcional, mas ajuda muito)\n• *Justificativa breve* (substituir item quebrado, novo colaborador, etc.)'
+      );
+      if (bloqueia) return;
     }
 
-    // ─── MANUTENÇÃO: texto livre com local e descrição ───
-    if (cat === 'manutencao' && !dados.detalhes_extras) {
-      if (estado?.etapa === 'aguardando_detalhes_manut') {
-        dados.detalhes_extras = texto;
-      } else if (texto.length > 60) {
-        dados.detalhes_extras = texto;
-      } else {
-        await log('manut_pergunta_detalhes');
-        await setEstado(userId, { etapa: 'aguardando_detalhes_manut', ...dados });
-        await enviarMensagem(channel, '🔧 Me dá mais detalhes', [
-          { type: 'header', text: { type: 'plain_text', text: '🔧 Onde e o quê?', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: 'Pra a equipe resolver mais rápido:\n\n• *Local exato* (sede, andar, sala, posição da mesa)\n• *O que está com problema* (ex: ar-condicionado, lâmpada, porta, fechadura)\n• *Descrição* do problema (não liga, vazando, com barulho, etc.)' } },
-          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-        ]);
-        return;
-      }
+    // ═══ 🔧 MANUTENÇÃO ════════════════════════════════════
+    if (cat === 'manutencao') {
+      const bloqueia = await pedirDetalhes(
+        'aguardando_detalhes_manut',
+        '🔧 Detalhes da manutenção',
+        'Pra a equipe resolver mais rápido, me passa:\n\n• *Local exato* (sede, andar, sala, posição)\n• *O que está com problema* (ex: ar-condicionado, lâmpada, porta, fechadura, mesa)\n• *Descrição do problema* (não liga, vazando, com barulho, quebrado)\n• *Desde quando* está com defeito (opcional)'
+      );
+      if (bloqueia) return;
     }
 
-    // ─── Tudo coletado → mostra resumo final ───
+    // ═══ 🔨 REFORMA & MELHORIA ════════════════════════════
+    if (cat === 'reforma') {
+      const bloqueia = await pedirDetalhes(
+        'aguardando_detalhes_reforma',
+        '🔨 Detalhes da reforma',
+        'Me passa em uma mensagem:\n\n• *Local* da reforma/melhoria\n• *O que precisa ser feito* (pintura, troca de piso, novo layout, móvel novo)\n• *Justificativa* da reforma\n• *Prazo desejado*, se houver\n• *Orçamento aproximado*, se souber'
+      );
+      if (bloqueia) return;
+    }
+
+    // ═══ ❓ OUTROS ════════════════════════════════════════
+    // Para categoria "outros", se a primeira mensagem foi curta, pede um pouco mais
+    if (cat === 'outros' && !dados.detalhes_extras && (dados.texto_original || '').length < 30) {
+      const bloqueia = await pedirDetalhes(
+        'aguardando_detalhes_outros',
+        '❓ Me conta mais',
+        'Pra eu encaminhar pro time certo, me explica melhor:\n\n• *O que você precisa* exatamente\n• *Contexto* (pra quê, quando, onde)\n• Qualquer detalhe que ajude a entender'
+      );
+      if (bloqueia) return;
+    }
+
+    // ═══ Tudo coletado → resumo final ════════════════════
     try {
       await setEstado(userId, { etapa: 'confirmar', ...dados });
     } catch (e) { console.warn('setEstado fail:', e.message); }
