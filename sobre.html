@@ -663,6 +663,77 @@ body::before {
 .slide.active .mockup-browser { animation: fadeUp 800ms var(--ease-out) 300ms both; }
 
 /* Controles */
+/* ─────── Componente Antes/Depois (slide 2) ─────── */
+.antes-depois {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 48px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.ad-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: fadeUpAd 800ms ease-out both;
+}
+.ad-antes { animation-delay: 200ms; opacity: 0; }
+.ad-depois { animation-delay: 800ms; opacity: 0; }
+@keyframes fadeUpAd {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ad-label {
+  font-family: var(--lx-font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lx-primary-lightest);
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.ad-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ad-chip {
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: var(--lx-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.ad-bad {
+  background: rgba(199, 4, 4, 0.12);
+  border: 1px solid rgba(250, 55, 55, 0.3);
+  color: rgba(255, 200, 200, 0.85);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+.ad-good {
+  background: rgba(102, 19, 208, 0.2);
+  border: 1px solid rgba(142, 68, 237, 0.45);
+  color: var(--lx-white);
+  box-shadow: 0 4px 16px rgba(102, 19, 208, 0.25);
+}
+.ad-arrow {
+  color: var(--lx-secondary-pure);
+  animation: arrowPulse 1.6s ease-in-out infinite;
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+@keyframes arrowPulse {
+  0%, 100% { transform: translateX(0); opacity: 0.7; }
+  50% { transform: translateX(6px); opacity: 1; }
+}
+
 .controls {
   position: fixed;
   bottom: 32px;
@@ -941,6 +1012,24 @@ body::before {
   }
   .cat-chip svg { width: 14px; height: 14px; }
 
+  /* Antes/Depois — empilha vertical no mobile */
+  .antes-depois {
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .ad-arrow {
+    transform: rotate(90deg);
+    margin: 4px 0;
+  }
+  .ad-chip {
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+  .ad-label {
+    font-size: 10px;
+  }
+
   /* Features grid */
   .features-grid {
     grid-template-columns: 1fr;
@@ -1096,6 +1185,28 @@ body::before {
     <div class="overline-pill">o que muda</div>
     <h2>Chega de e-mail solto<br>e <span class="accent">planilha esquecida</span>.</h2>
     <p class="lead">Tudo em um único lugar. Acompanhamento automático. Histórico organizado. Sem trabalho extra pra você ou pro time.</p>
+    <!-- Ilustração: antes (caótico) vs depois (organizado) -->
+    <div class="antes-depois">
+      <div class="ad-col ad-antes">
+        <div class="ad-label">❌ antes</div>
+        <div class="ad-items">
+          <div class="ad-chip ad-bad">📧 e-mail perdido</div>
+          <div class="ad-chip ad-bad">📊 planilha caótica</div>
+          <div class="ad-chip ad-bad">😵 nada centralizado</div>
+        </div>
+      </div>
+      <div class="ad-arrow">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+      <div class="ad-col ad-depois">
+        <div class="ad-label">✨ agora</div>
+        <div class="ad-items">
+          <div class="ad-chip ad-good">⚡ chamado em 30s</div>
+          <div class="ad-chip ad-good">📱 notificações Slack</div>
+          <div class="ad-chip ad-good">📋 tudo registrado</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- SLIDE 3: CATEGORIAS -->
