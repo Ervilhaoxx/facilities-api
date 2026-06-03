@@ -960,6 +960,8 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('change-pass-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    // Flag global pra outros lugares (ex: brindes — só admin vê info de estoque)
+    window._isUserAdmin = isAdmin;
     const name = user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
     document.getElementById('header-user').textContent = name;
     document.getElementById('nome').value = name;
@@ -1553,17 +1555,22 @@ async function updateItensBrinde(dept) {
     const sede = item.estoque_sede || 0;
     const esgotado = total <= 0;
     const baixo = total > 0 && total <= item.minimo_alerta;
+    const isAdmin = window._isUserAdmin === true;
 
+    // Badge de estoque: só aparece para ADMIN
+    // Não-admins veem só o item, sem info de quantidade/status
     let badge = '';
-    if (esgotado) badge = `<span style="font-size:0.65rem;font-weight:700;color:#dc2626;background:rgba(220,38,38,0.1);padding:2px 8px;border-radius:99px;">Esgotado</span>`;
-    else if (baixo) badge = `<span style="font-size:0.65rem;font-weight:700;color:#b45309;background:rgba(234,179,8,0.1);padding:2px 8px;border-radius:99px;">Estoque baixo</span>`;
-    else badge = `<span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:rgba(22,163,74,0.08);padding:2px 8px;border-radius:99px;">${sede} na sede</span>`;
+    if (isAdmin) {
+      if (esgotado) badge = `<span style="font-size:0.65rem;font-weight:700;color:#dc2626;background:rgba(220,38,38,0.1);padding:2px 8px;border-radius:99px;">Esgotado</span>`;
+      else if (baixo) badge = `<span style="font-size:0.65rem;font-weight:700;color:#b45309;background:rgba(234,179,8,0.1);padding:2px 8px;border-radius:99px;">Estoque baixo</span>`;
+      else badge = `<span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:rgba(22,163,74,0.08);padding:2px 8px;border-radius:99px;">${sede} na sede</span>`;
+    }
 
     return `
     <div class="item-brinde" style="${esgotado ? 'opacity:0.5;pointer-events:none;' : ''}">
       <input type="checkbox" id="brinde-item-${i}" name="brinde_item" value="${item.nome}" data-id="${item.id}" data-max="${sede}"
         onchange="this.closest('.item-brinde').querySelector('.qty-input').value=this.checked?'1':''">
-      <span style="font-size:1rem;">${item.emoji}</span>
+      <span style="font-size:1rem;">${item.emoji || '🎁'}</span>
       <label for="brinde-item-${i}" style="flex:1;">${item.nome}</label>
       ${badge}
       <input type="number" class="qty-input" min="1" max="${sede}" value="" placeholder="Qtd" data-item="${item.nome}" data-id="${item.id}">
