@@ -58,6 +58,39 @@ const PRIORIDADES = [
   { value: 'alta',  label: '🔴 Alta' },
 ];
 
+// ─────────────────────────────────────────────────────────────
+// CENTROS DE CUSTO DE CS — só esses precisam de aprovação do Leandro
+// (qualquer outro CC é tratado como Comercial/Outros: sem aprovação)
+// ─────────────────────────────────────────────────────────────
+const CC_CS = [
+  'CS GERAL GROWTH',
+  'CS GROWTH',
+  'CS INTERNACIONAL PPMF',
+  'CS OPS & INSIGHTS GROWTH',
+  'CS PPMF',
+  'PROFESSIONAL SERVICES GROWTH',
+  'QUALIDADE GERAL GROWTH',
+  'QUALIDADE GROWTH',
+  'QUALIDADE PPMF',
+  'SUPORTE GROWTH',
+  'SUPORTE PPMF',
+];
+
+// Brindes liberados pra COMERCIAL (e outros não-CS) — sem aprovação
+const BRINDES_COMERCIAL = [
+  'Mini Agenda',
+  'Caneta',
+  'Garrafa Preta',
+  'Sacola Preta',
+];
+
+// Função: detecta se um centro de custo é CS
+function isCentroCustoCS(cc) {
+  if (!cc) return false;
+  const ccUp = String(cc).toUpperCase().trim();
+  return CC_CS.some(c => c.toUpperCase() === ccUp);
+}
+
 // ============================================================================
 // Helpers de parsing
 // ============================================================================
@@ -663,25 +696,31 @@ module.exports = async function handler(req, res) {
       // DM de confirmação para quem abriu
       await dmConfirmacao(userId, ticket);
 
-      // Se for brindes, dispara também o fluxo do Leandro (aprovação)
+      // Se for brindes E o solicitante for de CS, dispara fluxo Leandro (aprovação)
+      // Brindes de Comercial/outros vão direto pra Facilities sem passar pelo Leandro
       if (categoria === 'brindes') {
-        try {
-          await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://facilities-api.vercel.app'}/api/notify-slack`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              tipo: 'novo_brinde_gestor',
-              ticket: ticket.id,
-              titulo: ticket.titulo,
-              docId: ticket.docId,
-              emailColaborador: ticket.email,
-              nomeColaborador: ticket.nome,
-              itensBrinde: ticket.itens_brinde,
-              email: ticket.email,
-              nome: ticket.nome,
-            })
-          });
-        } catch (e) { console.error('Erro notificar Leandro:', e.message); }
+        const ehCS = isCentroCustoCS(ticket.centroCusto || slackUser?.centroCusto);
+        if (ehCS) {
+          try {
+            await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://facilities-api.vercel.app'}/api/notify-slack`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tipo: 'novo_brinde_gestor',
+                ticket: ticket.id,
+                titulo: ticket.titulo,
+                docId: ticket.docId,
+                emailColaborador: ticket.email,
+                nomeColaborador: ticket.nome,
+                itensBrinde: ticket.itens_brinde,
+                email: ticket.email,
+                nome: ticket.nome,
+              })
+            });
+          } catch (e) { console.error('Erro notificar Leandro:', e.message); }
+        } else {
+          console.log(`Brinde de não-CS (${ticket.centroCusto}) — pulando aprovação do Leandro`);
+        }
       }
 
       console.log(`✅ Ticket Slack criado: ${ticket.id} (${categoria}) por ${slackUser?.email || userId}`);
@@ -1059,55 +1098,83 @@ async function processarMensagemDM(evt) {
     }
 
     // ═══ 🎁 BRINDES ═══════════════════════════════════════
+    // Regras de aprovação:
+    // - CS (centro de custo CS) → todos os brindes + aprovação Leandro
+    // - Comercial e outros → só Mini Agenda, Caneta, Garrafa Preta, Sacola Preta + SEM aprovação
     if (cat === 'brindes' && !dados.brindes_solicitados) {
-      function pareceListaDeBrindes(txt) {
+      // Determina se é CS ou não (define o que pode pedir)
+      const ehCS = isCentroCustoCS(slackUser?.centroCusto);
+      dados.ehCS = ehCS;
+
+      // Função: detecta se o texto é uma lista válida COM NÚMEROS
+      // (não aceita "uns moleskines" ou "alguns brindes")
+      function pareceListaComQuantidades(txt) {
         const t = txt.toLowerCase();
-        const temNumero = /\d/.test(t);
-        const brindes = ['moleskine', 'moleskini', 'caneta', 'container', 'garrafa', 'copo', 'egg', 'sacola', 'tapa', 'câmera', 'camera'];
+        // Tem números explícitos?
+        const temNumero = /\b\d+\b/.test(t);
+        // Menciona algum brinde específico?
+        const brindes = ['moleskine', 'moleskini', 'agenda', 'caneta', 'container', 'contêiner', 'garrafa', 'copo', 'egg', 'sacola', 'tapa', 'câmera', 'camera'];
         const mencionaBrinde = brindes.some(b => t.includes(b));
-        // Se tem número E menciona brinde, é claramente uma lista
-        if (temNumero && mencionaBrinde) return true;
-        // Se só tem número (sem nome), pode ser quantidade
-        if (temNumero && !mencionaBrinde) return true;
-        return false;
+        // SÓ aceita se TEM número E menciona brinde
+        return temNumero && mencionaBrinde;
       }
 
-      // Captura DIRETO se já dá pra entender (tem número + menção a brinde)
-      // OU se está aguardando resposta da pergunta de brindes
-      if (pareceListaDeBrindes(texto) || estado?.etapa === 'aguardando_brindes_texto') {
-        if (pareceListaDeBrindes(texto)) {
-          dados.brindes_solicitados = texto;
-        } else {
-          // Estado aguardando mas texto não parece lista — assume que é resposta mesmo
-          dados.brindes_solicitados = texto;
-        }
-      } else {
-        // Primeiro contato: mostra lista e pergunta
-        await log('brindes_pergunta_lista');
+      // Captura DIRETO se tem número + brinde claramente
+      // OU se está aguardando resposta
+      if (pareceListaComQuantidades(texto)) {
+        dados.brindes_solicitados = texto;
+      } else if (estado?.etapa === 'aguardando_brindes_texto') {
+        // Está aguardando mas o texto não tem números — re-pergunta pedindo números
+        await log('brindes_pedir_quantidade');
         await setEstado(userId, { etapa: 'aguardando_brindes_texto', ...dados });
+        await enviarMensagem(channel, '⚠️ Preciso de quantidades exatas', [
+          { type: 'header', text: { type: 'plain_text', text: '⚠️ Quantos de cada?', emoji: true } },
+          { type: 'section', text: { type: 'mrkdwn', text: 'Pra fazer o pedido certinho, preciso que você me diga *quantos de cada item* você precisa.\n\nPor exemplo:\n• _"5 canetas e 2 sacolas pretas"_\n• _"10 mini agendas"_\n\nMe manda de novo informando os números, por favor 🙏' } },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
+        ]);
+        return;
+      } else {
+        // Primeiro contato: mostra lista (filtrada por CS/Comercial) + sempre pede números
+        await log('brindes_pergunta_lista', { ehCS, cc: slackUser?.centroCusto });
+        await setEstado(userId, { etapa: 'aguardando_brindes_texto', ...dados });
+
+        let fields, contexto;
+        if (ehCS) {
+          // CS: vê todos os brindes
+          fields = [
+            { type: 'mrkdwn', text: '📓 *Moleskine*' },
+            { type: 'mrkdwn', text: '📔 *Mini Agenda*' },
+            { type: 'mrkdwn', text: '🖊️ *Caneta*' },
+            { type: 'mrkdwn', text: '🖤 *Container Preto*' },
+            { type: 'mrkdwn', text: '🧡 *Container Laranja*' },
+            { type: 'mrkdwn', text: '🤍 *Container Branco*' },
+            { type: 'mrkdwn', text: '💜 *Container Roxo*' },
+            { type: 'mrkdwn', text: '🤍 *Garrafa Branca*' },
+            { type: 'mrkdwn', text: '🖤 *Garrafa Preta*' },
+            { type: 'mrkdwn', text: '🥚 *Copo Egg Branco*' },
+            { type: 'mrkdwn', text: '🥚 *Copo Egg Preto*' },
+            { type: 'mrkdwn', text: '🛍️ *Sacola Preta*' },
+            { type: 'mrkdwn', text: '📷 *Tapa Câmera*' },
+          ];
+          contexto = '🔔 _Seu pedido vai passar pela aprovação do Leandro (CS)._';
+        } else {
+          // Comercial/Outros: só os 4 itens liberados
+          fields = [
+            { type: 'mrkdwn', text: '📔 *Mini Agenda*' },
+            { type: 'mrkdwn', text: '🖊️ *Caneta*' },
+            { type: 'mrkdwn', text: '🖤 *Garrafa Preta*' },
+            { type: 'mrkdwn', text: '🛍️ *Sacola Preta*' },
+          ];
+          contexto = '✅ _Seu pedido será encaminhado direto pra Facilities (não precisa de aprovação)._';
+        }
+
         await enviarMensagem(channel, '🎁 Quais brindes você precisa?', [
           { type: 'header', text: { type: 'plain_text', text: '🎁 Brindes disponíveis', emoji: true } },
-          { type: 'section', text: { type: 'mrkdwn', text: '*Confira nossa lista:*' } },
-          {
-            type: 'section',
-            fields: [
-              { type: 'mrkdwn', text: '📓 *Moleskine*' },
-              { type: 'mrkdwn', text: '🖊️ *Caneta*' },
-              { type: 'mrkdwn', text: '🖤 *Container Preto*' },
-              { type: 'mrkdwn', text: '🧡 *Container Laranja*' },
-              { type: 'mrkdwn', text: '🤍 *Container Branco*' },
-              { type: 'mrkdwn', text: '💜 *Container Roxo*' },
-              { type: 'mrkdwn', text: '🤍 *Garrafa Branca*' },
-              { type: 'mrkdwn', text: '🖤 *Garrafa Preta*' },
-              { type: 'mrkdwn', text: '🥚 *Copo Egg Branco*' },
-              { type: 'mrkdwn', text: '🥚 *Copo Egg Preto*' },
-              { type: 'mrkdwn', text: '🛍️ *Sacola Preta*' },
-              { type: 'mrkdwn', text: '📷 *Tapa Câmera*' },
-            ]
-          },
+          { type: 'section', text: { type: 'mrkdwn', text: ehCS ? '*Você pode pedir qualquer um da lista:*' : '*Sua área pode pedir os seguintes brindes:*' } },
+          { type: 'section', fields },
           { type: 'divider' },
-          { type: 'section', text: { type: 'mrkdwn', text: '✏️ *Me diga quais brindes e quantos você quer.*\n\nPode pedir vários de uma vez:\n• _"Quero 2 moleskines e 3 garrafas pretas"_\n• _"5 canetas e 1 sacola preta"_' } },
-          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
+          { type: 'section', text: { type: 'mrkdwn', text: '✏️ *Me diga quais brindes e QUANTOS de cada você quer.*\n\n_⚠️ Preciso de números exatos. Não aceito pedidos vagos como "uns moleskines"._\n\nExemplos do que eu aceito:\n• _"Quero 2 moleskines e 3 garrafas pretas"_\n• _"5 canetas e 1 sacola preta"_\n• _"10 mini agendas para um evento dia 20"_' } },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: contexto + '\n\nDigite "cancelar" para reiniciar.' }] }
         ]);
         return;
       }
@@ -1457,11 +1524,22 @@ async function tratarBotaoFluxoConversacional(body, action) {
       await notificarAdmin(ticket);
       await log('confirmar_admin_notif');
 
+      // Determina texto extra baseado em CS/Comercial pra brindes
+      let avisoFluxo = '';
+      if (ticket.categoria === 'brindes') {
+        const ehCS = dados.ehCS === true;
+        if (ehCS) {
+          avisoFluxo = '\n\n🔔 *Próximo passo:* Seu pedido foi enviado pra aprovação do Leandro. Assim que ele aprovar, você recebe a confirmação aqui.';
+        } else {
+          avisoFluxo = '\n\n✅ *Próximo passo:* Seu pedido foi encaminhado direto pra equipe de Facilities. Sem necessidade de aprovação.';
+        }
+      }
+
       // Atualiza a mensagem com confirmação final
       const catLabel = CATEGORIAS.find(c => c.value === ticket.categoria)?.label || ticket.categoria;
       await atualizarMensagem(channel, body.message?.ts, `✅ Chamado ${ticket.id} aberto!`, [
         { type: 'header', text: { type: 'plain_text', text: '✅ Chamado registrado!', emoji: true } },
-        { type: 'section', text: { type: 'mrkdwn', text: `Tudo certo! Seu chamado foi registrado e já está na fila do time. 📥` } },
+        { type: 'section', text: { type: 'mrkdwn', text: `Tudo certo! Seu chamado foi registrado e já está na fila do time. 📥${avisoFluxo}` } },
         { type: 'divider' },
         {
           type: 'section',
