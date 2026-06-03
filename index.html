@@ -1303,10 +1303,7 @@
     const prio = document.querySelector('input[name="prioridade"]:checked');
     if (!prio) { alert('Selecione uma prioridade.'); return; }
     const cat = document.getElementById('categoria').value;
-    const needsAttach = ['infraestrutura','seguranca','plataformas'];
-    if (needsAttach.includes(cat) && !document.getElementById('anexo').files[0]) {
-      alert('Este tipo de chamado requer um anexo.'); return;
-    }
+    // Anexo agora é opcional em todas as categorias
     tc++;
     window.tc = tc;
     localStorage.setItem('lc_tc', tc);
@@ -1447,12 +1444,12 @@
 const CATS = {
   manutencao:    { icon:'🔧', title:'Manutenção', sub:'Reparos: elétrica, hidráulica, ar condicionado e similares (SLA: 15 dias)', attach:false },
   reforma:       { icon:'🏗️', title:'Reforma & Melhoria', sub:'Grandes reformas, obras e melhorias estruturais (SLA: 60 dias)', attach:false },
-  infraestrutura:{ icon:'🪑', title:'Infraestrutura', sub:'Móveis, equipamentos, espaço físico', attach:true, note:'Foto do problema obrigatória', lbl:'Foto do problema *' },
+  infraestrutura:{ icon:'🪑', title:'Infraestrutura', sub:'Móveis, equipamentos, espaço físico', attach:true, note:'Anexar foto do problema ajuda muito (opcional)', lbl:'Foto do problema' },
   limpeza:       { icon:'🧹', title:'Limpeza e Conservação', sub:'Copa, banheiros, áreas externas e dedetização', attach:false },
   seguranca:     { icon:'🔐', title:'Segurança e Acesso', sub:'Crachás, chaves, câmeras, visitantes e prestadores', attach:true, note:'Documento de aprovação (se aplicável)', lbl:'Documento de aprovação' },
   brindes:       { icon:'🎁', title:'Gestão de Brindes', sub:'Solicitação de brindes corporativos', attach:false },
   suprimentos:   { icon:'📦', title:'Suprimentos de Escritório', sub:'Papel, material, café, higiene', attach:false },
-  plataformas:   { icon:'📱', title:'Acesso a Plataformas', sub:'Uber e Onfly corporativo', attach:true, note:'Aprovação do gestor direto obrigatória', lbl:'Aprovação do gestor *' },
+  plataformas:   { icon:'📱', title:'Acesso a Plataformas', sub:'Uber e Onfly corporativo', attach:true, note:'Aprovação do gestor direto (opcional)', lbl:'Aprovação do gestor' },
   logistica:     { icon:'🚚', title:'Logística & Envios', sub:'Envio de equipamentos e kits via DHL, Correio ou Uber Flash', attach:true, note:'Nota fiscal ou comprovante de envio', lbl:'Nota fiscal / comprovante' },
 };
 const SUBS = {
