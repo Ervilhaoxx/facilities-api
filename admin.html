@@ -2603,12 +2603,16 @@ window.renderHistorico = renderHistorico;
           <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--ink2);margin-bottom:5px;">Nome da categoria *</label>
           <input type="text" id="cat-nome" value="${cat?.nome || ''}" placeholder="Ex: Monitor, Cadeira, TV..."
             style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.85rem;">
+          <div id="cat-ia-hint" style="font-size:0.72rem;color:var(--purple);margin-top:4px;display:none;">✨ A IA escolherá o ícone automaticamente quando você salvar</div>
         </div>
         <div>
-          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--ink2);margin-bottom:5px;">Emoji</label>
-          <input type="text" id="cat-emoji" value="${cat?.emoji || ''}" placeholder="Ex: 🖥️ 🪑 📺 (1 emoji só)" maxlength="4"
-            style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:1.1rem;">
-          <div style="font-size:0.72rem;color:var(--ink3);margin-top:4px;">Sugestões: 🖥️ 💻 ⌨️ 🖱️ 📺 🪑 🛋️ 🪵 📱 🎮 🔌 🖨️ 📷 ❄️</div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--ink2);margin-bottom:5px;">Ícone (preenchido pela IA)</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="cat-emoji" value="${cat?.emoji || ''}" placeholder="Ex: 🖥️ (deixe vazio pra IA escolher)"
+              style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Poppins',sans-serif;font-size:1.1rem;">
+            <button type="button" id="btn-ia-emoji" onclick="sugerirEmojiIA()" style="padding:9px 14px;background:linear-gradient(135deg,#6613D0 0%,#7215E9 100%);color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;">✨ Sugerir com IA</button>
+          </div>
+          <div style="font-size:0.72rem;color:var(--ink3);margin-top:4px;">Deixe vazio que a IA escolhe o ícone automaticamente ao salvar</div>
         </div>
         <div>
           <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--ink2);margin-bottom:5px;">Descrição (opcional)</label>
@@ -2617,6 +2621,17 @@ window.renderHistorico = renderHistorico;
         </div>
       </div>
     `;
+
+    // Mostra hint da IA conforme usuário digita o nome
+    document.getElementById('cat-nome').addEventListener('input', (e) => {
+      const hint = document.getElementById('cat-ia-hint');
+      const emojiInput = document.getElementById('cat-emoji');
+      if (e.target.value.trim() && !emojiInput.value.trim()) {
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    });
 
     // Botão deletar só aparece se for edição
     const btnDel = document.getElementById('imob-btn-del');
@@ -2631,9 +2646,38 @@ window.renderHistorico = renderHistorico;
     modal.classList.add('open');
   };
 
+  // Botão "Sugerir com IA" no modal de categoria
+  window.sugerirEmojiIA = async function() {
+    const nome = document.getElementById('cat-nome').value.trim();
+    if (!nome) { alert('Digite o nome da categoria primeiro'); return; }
+    const btn = document.getElementById('btn-ia-emoji');
+    const emojiInput = document.getElementById('cat-emoji');
+    btn.disabled = true;
+    btn.textContent = '⏳ Pensando...';
+    try {
+      const r = await fetch('/api/classificar-patrimonio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'categoria', nome }),
+      });
+      const data = await r.json();
+      if (data.ok && data.emoji) {
+        emojiInput.value = data.emoji;
+        btn.textContent = '✅ Sugerido!';
+        setTimeout(() => { btn.textContent = '✨ Sugerir com IA'; btn.disabled = false; }, 1500);
+      } else {
+        throw new Error(data.error || 'Sem resposta');
+      }
+    } catch (e) {
+      btn.textContent = '✨ Sugerir com IA';
+      btn.disabled = false;
+      alert('Erro ao sugerir: ' + e.message);
+    }
+  };
+
   async function salvarCategoria(id) {
     const nome = document.getElementById('cat-nome').value.trim();
-    const emoji = document.getElementById('cat-emoji').value.trim();
+    let emoji = document.getElementById('cat-emoji').value.trim();
     const descricao = document.getElementById('cat-descricao').value.trim();
 
     if (!nome) { alert('Nome é obrigatório'); return; }
@@ -2642,11 +2686,27 @@ window.renderHistorico = renderHistorico;
     const ja = imobData.categorias.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c._id !== id);
     if (ja) { alert(`Já existe uma categoria com o nome "${nome}".`); return; }
 
+    // Se emoji vazio, chama IA pra sugerir automaticamente
+    if (!emoji) {
+      try {
+        const r = await fetch('/api/classificar-patrimonio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: 'categoria', nome }),
+        });
+        const data = await r.json();
+        if (data.ok && data.emoji) emoji = data.emoji;
+      } catch (e) {
+        console.warn('IA falhou, usando fallback:', e);
+      }
+      if (!emoji) emoji = '📦'; // ultimo recurso
+    }
+
     try {
       const { collection, doc, setDoc, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       const dados = {
         nome,
-        emoji: emoji || '📦',
+        emoji,
         descricao: descricao || null,
         updatedAt: serverTimestamp(),
       };
@@ -2781,10 +2841,19 @@ window.renderHistorico = renderHistorico;
     const campos = IMOB_FORMS[tipo] || [];
     document.getElementById('imob-modal-title').textContent = (imobEditId ? 'Editar ' : 'Adicionar ') + IMOB_TITLES[tipo];
     document.getElementById('imob-btn-del').style.display = imobEditId ? 'flex' : 'none';
+
+    // Restaurar handler default do save (pode ter sido sobrescrito pelo modal de categoria)
+    document.querySelector('#imob-modal .imob-btn-save').onclick = () => salvarItemImob();
+    document.getElementById('imob-btn-del').onclick = () => deletarItemImob();
+
     document.getElementById('imob-modal-form').innerHTML = `
       <div class="imob-form-grid">
         ${campos.map(c => {
           const opts = c.optsDynamic ? c.optsDynamic() : (c.opts || []);
+          // Adiciona botão de sugestão IA no campo categoria do patrimônio
+          const extraBtn = (tipo === 'patrimonio' && c.id === 'categoria')
+            ? `<button type="button" onclick="sugerirCategoriaIA()" style="margin-top:6px;padding:6px 12px;background:linear-gradient(135deg,#6613D0 0%,#7215E9 100%);color:#fff;border:none;border-radius:6px;font-family:'Poppins',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;">✨ Sugerir com IA</button>`
+            : '';
           return `
           <div class="imob-field ${c.full ? 'full' : ''}">
             <label>${c.label}</label>
@@ -2792,7 +2861,7 @@ window.renderHistorico = renderHistorico;
               ? `<select id="imob-f-${c.id}">
                    <option value="">— Selecione —</option>
                    ${opts.map(o => `<option value="${o}" ${dadosExistentes?.[c.id]===o?'selected':''}>${o}</option>`).join('')}
-                 </select>`
+                 </select>${extraBtn}`
               : c.type === 'textarea'
               ? `<textarea id="imob-f-${c.id}" placeholder="${c.placeholder||''}">${dadosExistentes?.[c.id]||''}</textarea>`
               : `<input id="imob-f-${c.id}" type="${c.type||'text'}" placeholder="${c.placeholder||''}" value="${dadosExistentes?.[c.id]||''}">`
@@ -2801,6 +2870,69 @@ window.renderHistorico = renderHistorico;
         }).join('')}
       </div>`;
     document.getElementById('imob-modal').classList.add('open');
+  };
+
+  // Sugerir categoria pelo nome do item (modal de patrimônio)
+  window.sugerirCategoriaIA = async function() {
+    const nomeInput = document.getElementById('imob-f-nome');
+    const catSelect = document.getElementById('imob-f-categoria');
+    if (!nomeInput || !catSelect) return;
+    const nome = nomeInput.value.trim();
+    if (!nome) { alert('Digite o nome do item primeiro'); return; }
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Pensando...';
+
+    try {
+      const categoriasDisp = imobData.categorias.map(c => c.nome);
+      const r = await fetch('/api/classificar-patrimonio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'item', nome, categorias_disponiveis: categoriasDisp }),
+      });
+      const data = await r.json();
+      if (data.ok && data.categoria) {
+        // Procura essa categoria no select
+        const optionExists = [...catSelect.options].some(o => o.value === data.categoria);
+        if (optionExists) {
+          catSelect.value = data.categoria;
+          btn.textContent = '✅ ' + data.categoria;
+        } else {
+          // Categoria sugerida não existe ainda, oferecer criar
+          if (confirm(`A IA sugeriu a categoria "${data.categoria}" que ainda não existe. Quer criar agora?`)) {
+            const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+            await addDoc(collection(db, 'imob_categorias'), {
+              nome: data.categoria,
+              emoji: data.emoji || '📦',
+              descricao: null,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            // Aguarda o snapshot atualizar
+            setTimeout(() => {
+              const opt = document.createElement('option');
+              opt.value = data.categoria;
+              opt.textContent = data.categoria;
+              opt.selected = true;
+              catSelect.appendChild(opt);
+              btn.textContent = '✅ ' + data.categoria;
+            }, 500);
+          } else {
+            btn.textContent = '✨ Sugerir com IA';
+            btn.disabled = false;
+            return;
+          }
+        }
+        setTimeout(() => { btn.textContent = '✨ Sugerir com IA'; btn.disabled = false; }, 2000);
+      } else {
+        throw new Error(data.error || 'Sem resposta');
+      }
+    } catch (e) {
+      btn.textContent = '✨ Sugerir com IA';
+      btn.disabled = false;
+      alert('Erro: ' + e.message);
+    }
   };
 
   window.editarItemImob = (tipo, id) => {
