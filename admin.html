@@ -2540,7 +2540,36 @@ window.renderHistorico = renderHistorico;
     if (!stats || !grid) return;
 
     const all = imobData.patrimonio;
-    stats.innerHTML = [
+
+    // Calcular valor total do patrimônio (e dos filtrados)
+    function parseValor(v) {
+      if (!v) return 0;
+      if (typeof v === 'number') return v;
+      const n = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+      return isNaN(n) ? 0 : n;
+    }
+    const valorTotal = all.reduce((sum, p) => sum + parseValor(p.valor), 0);
+    const valorFiltrado = data.reduce((sum, p) => sum + parseValor(p.valor), 0);
+    const temFiltro = (busca || statusFiltro || catFiltro || locFiltro);
+    const fmt = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+
+    // Card grande de valor total (em destaque acima dos stats normais)
+    stats.innerHTML = `
+      <div style="grid-column:1/-1;background:linear-gradient(135deg,#2D085D 0%,#5B11BA 50%,#6613D0 100%);border-radius:16px;padding:1.5rem;margin-bottom:1rem;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:0.78rem;font-weight:600;opacity:0.85;text-transform:uppercase;letter-spacing:0.06em;">💰 Valor total do patrimônio</div>
+          <div style="font-family:'Funnel Display',sans-serif;font-size:2.2rem;font-weight:700;margin-top:6px;letter-spacing:-0.02em;">${fmt(valorTotal)}</div>
+          <div style="font-size:0.78rem;opacity:0.8;margin-top:2px;">Calculado a partir de ${all.filter(p => parseValor(p.valor) > 0).length} de ${all.length} itens com valor cadastrado</div>
+        </div>
+        ${temFiltro ? `
+          <div style="text-align:right;background:rgba(255,255,255,0.12);border-radius:12px;padding:12px 18px;backdrop-filter:blur(4px);">
+            <div style="font-size:0.7rem;font-weight:600;opacity:0.85;text-transform:uppercase;letter-spacing:0.06em;">Filtros ativos</div>
+            <div style="font-family:'Funnel Display',sans-serif;font-size:1.3rem;font-weight:700;margin-top:4px;">${fmt(valorFiltrado)}</div>
+            <div style="font-size:0.72rem;opacity:0.8;">${data.length} ${data.length === 1 ? 'item' : 'itens'}</div>
+          </div>
+        ` : ''}
+      </div>
+    ` + [
       {n: all.length, l: 'Total de itens', c: '#6613D0'},
       {n: all.filter(x=>x.status==='Em uso').length, l: 'Em uso', c: '#FF6B2B'},
       {n: all.filter(x=>x.status==='Disponível').length, l: 'Disponíveis', c: '#16a34a'},
@@ -4018,5 +4047,3 @@ window.renderHistorico = renderHistorico;
 </script>
 </body>
 </html>
-
-<!-- redeploy 1780942925 -->
