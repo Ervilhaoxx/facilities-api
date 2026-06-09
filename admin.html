@@ -3085,7 +3085,6 @@ window.renderHistorico = renderHistorico;
       { id:'num_patrimonio', label:'Número de patrimônio', type:'text', placeholder:'Ex: 001234' },
       { id:'categoria', label:'Categoria', type:'select', optsDynamic: () => imobData.categorias.map(c => c.nome) },
       { id:'status', label:'Status', type:'select', opts:['Em uso','Disponível','Em manutenção','Descartado'] },
-      { id:'responsavel', label:'Responsável', type:'text', placeholder:'Nome do colaborador' },
       { id:'localizacao', label:'Localização', type:'select', optsDynamic: () => imobData.localizacoes.map(l => l.nome) },
       { id:'sublocalizacao', label:'Sublocalização (sala específica)', type:'select', optsDynamic: () => {
           const loc = document.getElementById('imob-f-localizacao')?.value || '';
@@ -3093,12 +3092,8 @@ window.renderHistorico = renderHistorico;
           return (imobData.sublocalizacoes || []).filter(s => s.parente === loc).map(s => s.nome);
         }
       },
-      { id:'num_serie', label:'Número de série', type:'text', placeholder:'Opcional' },
-      { id:'data_aquisicao', label:'Data de aquisição', type:'date', placeholder:'' },
       { id:'valor', label:'Valor (R$)', type:'text', placeholder:'Ex: 3500,00' },
-      { id:'fornecedor', label:'Fornecedor', type:'text', placeholder:'De onde veio?' },
-      { id:'responsavel_compra', label:'Quem comprou', type:'text', placeholder:'Pessoa responsável pela compra' },
-      { id:'observacoes', label:'Observações', type:'textarea', full:true, placeholder:'Estado, histórico, etc...' },
+      { id:'referencia', label:'Identificador / Referência', type:'text', full:true, placeholder:'Modelo, nº de série, código do fabricante...' },
     ],
     contrato: [
       { id:'nome', label:'Nome / Identificação', type:'text', full:true, placeholder:'Ex: Contrato Sede Curitiba' },
