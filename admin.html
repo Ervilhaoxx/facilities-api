@@ -3165,7 +3165,8 @@ window.renderHistorico = renderHistorico;
           subSel.style.opacity = subs.length === 0 ? '0.5' : '1';
         };
         locSel.addEventListener('change', atualizarSub);
-        atualizarSub();
+        // Aguarda snapshot carregar antes de popular
+        setTimeout(atualizarSub, 300);
       }
     }
   };
