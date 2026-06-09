@@ -1,4 +1,4 @@
-// /api/slack-comando.js
+﻿// /api/slack-comando.js
 // Endpoint único para abertura de chamados via Slack
 //
 // Trata 3 tipos de payload:
@@ -1612,6 +1612,23 @@ async function tratarBotaoFluxoConversacional(body, action) {
       });
       await log('confirmar_ticket_criado', { id: ticket.id });
 
+      // ── BAIXA AUTOMÁTICA DE ESTOQUE (brindes pelo bot) ──
+      if (dados.categoria === 'brindes' && dados.brindes_solicitados) {
+        try {
+          const baseUrl = process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://facilities-api.vercel.app';
+          const r = await fetch(`${baseUrl}/api/baixar-estoque-brinde`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: dados.brindes_solicitados }),
+          });
+          const resBaixa = await r.json();
+          await log('baixa_estoque', { baixas: resBaixa.baixas?.length || 0, alertas: resBaixa.alertas?.length || 0 });
+        } catch (e) {
+          console.error('Erro ao baixar estoque:', e.message);
+          await log('baixa_estoque_erro', { error: e.message });
+        }
+      }
+
       await limparEstado(userId);
       await notificarAdmin(ticket);
       await log('confirmar_admin_notif');
@@ -1675,3 +1692,4 @@ async function atualizarMensagem(channel, ts, text, blocks = null) {
     });
   } catch (e) { console.error('atualizarMensagem:', e.message); }
 }
+
