@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1727,9 +1727,20 @@ function updateBadge() {
             (t.observacoes ? '<div class="detail-item" style="grid-column:1/-1"><label>Observações</label><p>' + t.observacoes + '</p></div>' : '');
           brindeSec.style.display = 'contents';
         } else if (t.itens_brinde || t.tipo_entrega || t.endereco_envio) {
+          let endCorreioHtml = '';
+          if (t.endereco_envio && typeof t.endereco_envio === 'object') {
+            endCorreioHtml =
+              '<div class="detail-item" style="grid-column:1/-1;margin-top:8px;padding-top:8px;border-top:1px solid rgba(102,19,208,0.12);"><span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#6613D0;">Dados para Expedicao (Correios)</span></div>' +
+              (t.endereco_envio.nome ? '<div class="detail-item"><label>Destinatario</label><p style="font-weight:700;">' + t.endereco_envio.nome + '</p></div>' : '') +
+              (t.endereco_envio.cpf_tel ? '<div class="detail-item"><label>CPF / Telefone</label><p>' + t.endereco_envio.cpf_tel + '</p></div>' : '') +
+              (t.endereco_envio.cep ? '<div class="detail-item"><label>CEP</label><p>' + t.endereco_envio.cep + '</p></div>' : '') +
+              (t.endereco_envio.rua ? '<div class="detail-item" style="grid-column:1/-1"><label>Endereco</label><p>' + t.endereco_envio.rua + ', ' + (t.endereco_envio.numero||'S/N') + (t.endereco_envio.complemento ? ' - ' + t.endereco_envio.complemento : '') + '</p></div>' : '') +
+              (t.endereco_envio.cidade ? '<div class="detail-item"><label>Cidade / UF</label><p>' + t.endereco_envio.cidade + ' / ' + (t.endereco_envio.estado||'') + '</p></div>' : '');
+          }
           brindeSec.innerHTML =
             (t.itens_brinde ? '<div class="detail-item" style="grid-column:1/-1"><label>Itens solicitados</label><p>' + t.itens_brinde + '</p></div>' : '') +
-            (t.tipo_entrega ? '<div class="detail-item"><label>Tipo de entrega</label><p>' + t.tipo_entrega + '</p></div>' : '');
+            (t.tipo_entrega ? '<div class="detail-item"><label>Tipo de entrega</label><p>' + t.tipo_entrega + '</p></div>' : '') +
+            endCorreioHtml;
           brindeSec.style.display = 'contents';
         } else { brindeSec.style.display = 'none'; }
       }
