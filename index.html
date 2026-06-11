@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1316,7 +1316,28 @@
       const q = qty && qty.value ? qty.value : '1';
       return `${i.value} (${q}x)`;
     });
+    // Validar campos obrigatorios do Correios
     const entrega = document.querySelector('input[name="entrega"]:checked');
+    if (cat === 'brindes' && entrega?.value === 'Envio pelos Correios') {
+      const camposCorreio = [
+        { id: 'end-nome', label: 'Nome do destinatario' },
+        { id: 'end-cpf', label: 'CPF ou Telefone' },
+        { id: 'end-cep', label: 'CEP' },
+        { id: 'end-rua', label: 'Rua / Av.' },
+        { id: 'end-num', label: 'Numero' },
+        { id: 'end-cidade', label: 'Cidade' },
+        { id: 'end-estado', label: 'Estado' },
+      ];
+      for (const campo of camposCorreio) {
+        const el = document.getElementById(campo.id);
+        if (!el || !el.value.trim()) {
+          alert('Preencha o campo obrigatorio: ' + campo.label);
+          el && el.focus();
+          tc--; window.tc = tc; localStorage.setItem('lc_tc', tc);
+          return;
+        }
+      }
+    }
     const enderecoEnvio = entrega?.value === 'Envio pelos Correios' ? {
       nome: document.getElementById('end-nome').value,
       cpf_tel: document.getElementById('end-cpf').value,
