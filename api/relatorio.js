@@ -1,4 +1,4 @@
-﻿// api/relatorio.js
+﻿﻿// api/relatorio.js
 // Gera relatório executivo a partir de stats pré-calculados no frontend
 // O frontend já busca do Pipefy e manda os dados prontos para evitar timeout
 
