@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1376,7 +1376,7 @@ function updateBadge() {
     charts.cat = new Chart(document.getElementById('chart-cat').getContext('2d'), {
       type: 'doughnut',
       data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#6613D0','#FF6B2B','#12b76a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6'], borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Sora', size: 11 }, padding: 12 } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', onClick: null, labels: { font: { family: 'Poppins', size: 11 }, padding: 12, boxWidth: 12, color: '#1e1b4b' } } } }
     });
 
     const statuses = ['Aberto','Em andamento','Aguardando aprovação','Concluído','Cancelado'];
