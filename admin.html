@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2820,7 +2820,7 @@ window.renderHistorico = renderHistorico;
     if (!data.length) { grid.innerHTML = '<div class="imob-empty"><div class="imob-empty-icon">🖥️</div><div>Nenhum item cadastrado</div></div>'; return; }
     grid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">' + data.map(item => {
       const al = (item.quantidade||0) < (item.minimo||0);
-      return '<div style="background:var(--surface);border:1px solid '+(al?'rgba(220,38,38,0.3)':'var(--border)')+';border-radius:14px;padding:1.1rem;cursor:pointer" onclick="abrirMovTI(\''+item._id+'\')"><div style="font-size:1.8rem;margin-bottom:8px">'+(item.emoji||'📦')+'</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px">'+(item.nome||'—')+'</div><div style="font-size:28px;font-weight:700;font-family:\'Funnel Display\',sans-serif;color:'+(al?'#DC2626':'#6613D0')+';line-height:1">'+(item.quantidade||0)+'</div><div style="font-size:11px;color:var(--ink3);margin-top:2px">unidades · min: '+(item.minimo||0)+'</div>'+(al?'<div style="font-size:11px;color:#DC2626;font-weight:600;margin-top:6px">Abaixo do minimo</div>':'')+(item.valor?'<div style="font-size:11px;color:var(--ink3);margin-top:4px">R$ '+Number(item.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})+' cada</div>':'')+'</div>';
+      return '<div style="background:var(--surface);border:1px solid '+(al?'rgba(220,38,38,0.3)':'var(--border)')+';border-radius:14px;padding:1.1rem;cursor:pointer" onclick="abrirMovTI(\''+item._id+'\')"><div style="font-size:1.8rem;margin-bottom:8px">'+(item.emoji||'📦')+'</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px">'+(item.nome||'—')+'</div><div style="font-size:28px;font-weight:700;font-family:\'Funnel Display\',sans-serif;color:'+(al?'#DC2626':'#6613D0')+';line-height:1">'+(item.quantidade||0)+'</div><div style="font-size:11px;color:var(--ink3);margin-top:2px">unidades · min: '+(item.minimo||0)+'</div>'+(al?'<div style="font-size:11px;color:#DC2626;font-weight:600;margin-top:6px">Abaixo do minimo</div>':'')+'</div>';
     }).join('') + '</div>';
   }
   // ONBOARDING
