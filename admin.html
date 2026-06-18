@@ -2056,9 +2056,6 @@ function nav(page, el) {
   const pageEl = document.getElementById('page-'+page);
   if (!pageEl) return; // página inválida
   pageEl.classList.add('active');
-  // Render sob demanda para páginas de controle
-  if (page === 'controle-ti' && typeof renderEstoqueTI === 'function') renderEstoqueTI();
-  if (page === 'controle-onboarding' && typeof renderOnboarding === 'function') renderOnboarding();
   document.querySelectorAll('.nav-item, .nav-sub-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
   else {
@@ -2626,11 +2623,11 @@ window.renderHistorico = renderHistorico;
     });
     onSnapshot(collection(db, 'estoque_ti'), snap => {
       window._estoqueTI = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
-      if (document.getElementById('grid-estoque-ti')) renderEstoqueTI();
+      renderEstoqueTI();
     });
     onSnapshot(collection(db, 'estoque_onboarding'), snap => {
       window._estoqueOnboarding = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
-      if (document.getElementById('grid-onboarding')) renderOnboarding();
+      renderOnboarding();
     });
     onSnapshot(collection(db, 'imob_sublocalizacoes'), snap => {
       imobData.sublocalizacoes = snap.docs.map(d => ({ _id: d.id, ...d.data() })).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
