@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2680,6 +2680,11 @@ window.renderHistorico = renderHistorico;
       const input = document.getElementById('patrim-tab-ativa');
       if (input) input.value = id;
       renderStatsPatrimonio();
+      // Filtrar cards por status da aba
+      const statusMap = { emuso: 'Em uso', disponivel: 'Disponível', manutencao: 'Em manutenção', descartado: 'Descartado' };
+      const sel = document.getElementById('filtro-patrim-status');
+      if (sel) { sel.value = statusMap[id] || ''; }
+      renderPatrimonio();
     };
     renderStatsPatrimonio();
 
