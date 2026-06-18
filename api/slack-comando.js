@@ -1,4 +1,4 @@
-﻿// /api/slack-comando.js
+﻿﻿// /api/slack-comando.js
 // Endpoint único para abertura de chamados via Slack
 //
 // Trata 3 tipos de payload:
@@ -742,7 +742,7 @@ module.exports = async function handler(req, res) {
     // Aprovação/recusa de brinde — repassa pro endpoint legacy
     if (actionId === 'aprovar_brinde' || actionId === 'recusar_brinde' || actionId.startsWith('aprovar_') || actionId.startsWith('recusar_')) {
       try {
-        const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://facilities-api.vercel.app';
+        const baseUrl = 'https://facilities-api.vercel.app';
         await fetch(`${baseUrl}/api/brinde-aprovacao`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
