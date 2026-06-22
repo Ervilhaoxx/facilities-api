@@ -1276,8 +1276,9 @@ const isAdminOrViewer = (email) => {
   let charts = {};
 
   const CATLABELS = {
-    manutencao:'🔧 Manutenção', reforma:'Reforma', infraestrutura:'Infraestrutura', limpeza:'Limpeza',
-    seguranca:'Segurança', brindes:'Brindes', suprimentos:'Suprimentos', plataformas:'Plataformas', reforma:'🏗️ Reforma & Melhoria'
+    manutencao:'Manutenção', reforma:'Reforma', infraestrutura:'Infraestrutura', limpeza:'Limpeza',
+    seguranca:'Segurança', brindes:'Brindes', suprimentos:'Suprimentos', plataformas:'Plataformas',
+    logistica:'Logística', acessos:'Acessos', outros:'Outros', gestao:'Gestão'
   };
   const SBADGE = {
     'Aberto':'b-aberto','Em andamento':'b-andamento','Aguardando aprovação':'b-aprovacao','Concluído':'b-concluido','Cancelado':'b-cancelado'
@@ -1539,7 +1540,7 @@ function updateBadge() {
     // Gráfico 1 — Categorias (doughnut)
     const catCounts = {};
     T.forEach(t => { catCounts[t.categoria] = (catCounts[t.categoria]||0)+1; });
-    const catLabels = Object.keys(catCounts).map(k => (CATLABELS[k]||k).replace(/[^\w\s]/g,'').trim());
+    const catLabels = Object.keys(catCounts).map(k => (CATLABELS[k]||k).trim());
     const catData = Object.values(catCounts);
     if (charts.cat) charts.cat.destroy();
     charts.cat = new Chart(document.getElementById('chart-cat').getContext('2d'), {
@@ -1666,7 +1667,7 @@ function updateBadge() {
           </div>` : `
           <div class="kanban-card-meta">
             <span class="kanban-prio kp-${t.prioridade}">${t.prioridade}</span>
-            <span>${t.fase_pipefy||(CATLABELS[t.categoria]||t.tipo_pipefy||t.categoria||'').replace(/[^\w\s]/g,'').trim()}</span>
+            <span>${t.fase_pipefy||(CATLABELS[t.categoria]||t.tipo_pipefy||t.categoria||'').trim()}</span>
             ${t.nome ? `<span>· ${t.nome.split(' ')[0]}</span>` : ''}
           </div>`}
         </div>`).join('');
