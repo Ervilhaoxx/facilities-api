@@ -2607,7 +2607,7 @@ window.renderHistorico = renderHistorico;
 
   // Carregar dados do Firebase
   async function carregarImob() {
-    const { collection, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const { collection, onSnapshot, doc, updateDoc, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     onSnapshot(collection(db, 'imob_patrimonio'), snap => {
       imobData.patrimonio = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
       renderImob('patrimonio');
