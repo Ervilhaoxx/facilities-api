@@ -1350,6 +1350,8 @@
       estado: document.getElementById('end-estado').value,
     } : null;
     const user = auth.currentUser;
+    const CS_CENTROS_APP = ['CS GERAL GROWTH','CS GROWTH','CS INTERNACIONAL PPMF','CS OPS & INSIGHTS GROWTH','CS PPMF','PROFESSIONAL SERVICES GROWTH','QUALIDADE GERAL GROWTH','QUALIDADE GROWTH','QUALIDADE PPMF','SUPORTE GROWTH','SUPORTE PPMF'];
+    const ehCS = CS_CENTROS_APP.includes(document.getElementById('departamento').value);
     try {
       const novoDoc = await addDoc(collection(db, 'tickets'), {
         id, nome: document.getElementById('nome').value, email: document.getElementById('email').value,
@@ -1359,13 +1361,13 @@
         titulo: document.getElementById('titulo').value, descricao: document.getElementById('descricao').value,
         prioridade: prio.value, data_desejada: document.getElementById('data-desejada').value,
         plataformas: plats.join(', '),
-        status: cat === 'brindes' ? 'Aguardando aprovação' : 'Aberto',
+        status: cat === 'brindes' ? (ehCS ? 'Aguardando aprovação' : 'Aberto') : 'Aberto',
         data_abertura: serverTimestamp(),
         itens_brinde: itensBrinde.join(', '),
         tipo_entrega: entrega?.value || '',
         endereco_envio: enderecoEnvio,
         historico: [{ 
-          acao: cat === 'brindes' ? 'Solicitação de brinde enviada — aguardando aprovação do gestor' : 'Chamado aberto', 
+          acao: cat === 'brindes' ? (ehCS ? 'Solicitação de brinde enviada — aguardando aprovação do gestor' : 'Chamado de brinde enviado para Facilities') : 'Chamado aberto', 
           data: new Date().toISOString(), 
           usuario: document.getElementById('nome').value 
         }]
@@ -1398,24 +1400,36 @@
           solicitanteNome: document.getElementById('nome').value,
         })
       }).catch(err => console.log('Slack admin notif error:', err));
-      // Notificar gestor (Leandro) no Slack quando for brinde — fluxo de aprovação
+      // Notificar e baixar estoque quando for brinde
       if (cat === 'brindes') {
-        // Chamar API para notificar o Leandro
-        fetch('/api/notify-slack', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tipo: 'novo_brinde_gestor',
-            ticket: id,
-            titulo: document.getElementById('titulo').value,
-            docId: novoDoc?.id || id,
-            emailColaborador: document.getElementById('email').value,
-            nomeColaborador: document.getElementById('nome').value,
-            itensBrinde: itensBrinde.join(', '),
-            email: document.getElementById('email').value,
-            nome: document.getElementById('nome').value,
-          })
-        }).catch(err => console.log('Slack notif error:', err));
+        const CS_CENTROS = ['CS GERAL GROWTH','CS GROWTH','CS INTERNACIONAL PPMF','CS OPS & INSIGHTS GROWTH','CS PPMF','PROFESSIONAL SERVICES GROWTH','QUALIDADE GERAL GROWTH','QUALIDADE GROWTH','QUALIDADE PPMF','SUPORTE GROWTH','SUPORTE PPMF'];
+        const dept = document.getElementById('departamento').value;
+        const ehCS = CS_CENTROS.includes(dept);
+        if (ehCS) {
+          // CS → notifica Leandro para aprovação (baixa acontece na aprovação)
+          fetch('/api/notify-slack', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tipo: 'novo_brinde_gestor',
+              ticket: id,
+              titulo: document.getElementById('titulo').value,
+              docId: novoDoc?.id || id,
+              emailColaborador: document.getElementById('email').value,
+              nomeColaborador: document.getElementById('nome').value,
+              itensBrinde: itensBrinde.join(', '),
+              email: document.getElementById('email').value,
+              nome: document.getElementById('nome').value,
+            })
+          }).catch(err => console.log('Slack notif error:', err));
+        } else {
+          // Comercial → baixa automática imediata da sede
+          fetch('/api/baixar-estoque-brinde', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: itensBrinde.join(', ') })
+          }).catch(err => console.log('Baixa estoque error:', err));
+        }
       }
     } catch(err) { alert('Erro ao salvar chamado. Tente novamente.'); }
   };
