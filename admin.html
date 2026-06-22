@@ -188,23 +188,42 @@
   .btn-secondary { background: var(--surface); color: var(--ink2); border: 1px solid var(--border); }
   .btn-secondary:hover { background: var(--purple-light); }
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(11,13,25,0.06), 0 1px 2px rgba(11,13,25,0.04); }
-  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 2px 2px 0 0; }
-  .metric-card.purple::before { background: var(--purple); }
-  .metric-card.orange::before { background: var(--orange); }
-  .metric-card.green::before { background: var(--success); }
-  .metric-card.red::before { background: var(--danger); }
-  .metric-card.gray::before { background: var(--ink3); }
-  .metric-card.blue::before { background: var(--info); }
-  .metric-label { font-size: 0.72rem; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.5rem; }
-  .metric-value { font-weight: 700; font-size: 2rem; letter-spacing: -0.05em; line-height: 1; margin-bottom: 0.3rem; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; position: relative; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; cursor: default; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102,19,208,0.10); }
+  .metric-card-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 0.9rem; }
+  .metric-card.purple .metric-card-icon { background: rgba(102,19,208,0.12); }
+  .metric-card.orange .metric-card-icon { background: rgba(255,107,43,0.12); }
+  .metric-card.green .metric-card-icon { background: rgba(18,183,106,0.12); }
+  .metric-card.red .metric-card-icon { background: rgba(239,68,68,0.12); }
+  .metric-card.blue .metric-card-icon { background: rgba(14,165,233,0.12); }
+  .metric-card.gray .metric-card-icon { background: rgba(100,116,139,0.12); }
+  .metric-card::after { content: ''; position: absolute; bottom: -18px; right: -18px; width: 80px; height: 80px; border-radius: 50%; opacity: 0.06; }
+  .metric-card.purple::after { background: var(--purple); }
+  .metric-card.orange::after { background: var(--orange); }
+  .metric-card.green::after { background: var(--success); }
+  .metric-card.red::after { background: var(--danger); }
+  .metric-card.blue::after { background: var(--info); }
+  .metric-card.gray::after { background: var(--ink3); }
+  .metric-label { font-size: 0.72rem; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.35rem; }
+  .metric-value { font-weight: 700; font-size: 2rem; letter-spacing: -0.05em; line-height: 1; margin-bottom: 0.25rem; font-family: 'Funnel Display', sans-serif; }
+  .metric-card.purple .metric-value { color: var(--purple); }
+  .metric-card.orange .metric-value { color: var(--orange); }
+  .metric-card.green .metric-value { color: var(--success); }
+  .metric-card.red .metric-value { color: var(--danger); }
+  .metric-card.blue .metric-value { color: var(--info); }
   .metric-sub { font-size: 0.75rem; color: var(--ink3); }
-  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
-  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+  .dash-welcome { background: linear-gradient(135deg, #2D085D 0%, #6613D0 60%, #8E44ED 100%); border-radius: var(--radius); padding: 1.5rem 1.75rem; margin-bottom: 1.5rem; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .dash-welcome-greeting { font-size: 1.35rem; font-weight: 700; font-family: 'Funnel Display', sans-serif; margin-bottom: 4px; }
+  .dash-welcome-sub { font-size: 0.82rem; opacity: 0.75; }
+  .dash-welcome-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dash-pill { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; backdrop-filter: blur(4px); }
+  .dash-pill.alert { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); }
   .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
   .chart-title { font-weight: 700; font-size: 0.9rem; color: var(--ink); margin-bottom: 0.3rem; letter-spacing: -0.01em; }
   .chart-sub { font-size: 0.75rem; color: var(--ink3); margin-bottom: 1.2rem; }
-  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap { position: relative; height: 220px; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
   .sla-bars { width: 100%; margin-top: 1rem; display: flex; flex-direction: column; gap: 8px; }
   .sla-bar-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
   .sla-bar-label { width: 80px; color: var(--ink3); font-weight: 500; flex-shrink: 0; }
@@ -615,6 +634,14 @@
         <a href="index.html" class="btn btn-primary">+ Novo chamado</a>
       </div>
     </div>
+    <!-- WELCOME CARD -->
+    <div class="dash-welcome" id="dash-welcome">
+      <div>
+        <div class="dash-welcome-greeting" id="dash-greeting">Bom dia! 👋</div>
+        <div class="dash-welcome-sub" id="dash-welcome-sub">Carregando resumo...</div>
+      </div>
+      <div class="dash-welcome-pills" id="dash-pills"></div>
+    </div>
 
     <!-- SELETOR DE PERÍODO -->
     <div class="periodo-bar" id="periodo-bar">
@@ -642,12 +669,12 @@
     <div id="periodo-desc" style="width:100%;font-size:0.78rem;color:var(--ink3);margin-top:-0.5rem;margin-bottom:0.5rem;"></div>
 
     <div class="metrics-grid">
-      <div class="metric-card purple"><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
-      <div class="metric-card orange"><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
-      <div class="metric-card green"><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub" id="m-co-sub">no período</div></div>
-      <div class="metric-card red"><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
-      <div class="metric-card blue"><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
-      <div class="metric-card gray"><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
+      <div class="metric-card purple"><div class="metric-card-icon">📬</div><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
+      <div class="metric-card orange"><div class="metric-card-icon">⚙️</div><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
+      <div class="metric-card green"><div class="metric-card-icon">✅</div><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub" id="m-co-sub">no período</div></div>
+      <div class="metric-card red"><div class="metric-card-icon">🚨</div><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
+      <div class="metric-card blue"><div class="metric-card-icon">🎯</div><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
+      <div class="metric-card gray"><div class="metric-card-icon">📊</div><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Chamados por Categoria</div><div class="chart-sub">Distribuição total de chamados</div><div class="chart-wrap"><canvas id="chart-cat"></canvas></div></div>
@@ -1466,8 +1493,43 @@ function updateBadge() {
     document.getElementById('badge-n').textContent = allTickets.filter(t=>t.status==='Aberto').length;
   }
 
+  function atualizarWelcomeCard(tickets) {
+    const user = window._auth?.currentUser;
+    const nome = user?.displayName?.split(' ')[0] || 'Admin';
+    const h = new Date().getHours();
+    const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const greeting = document.getElementById('dash-greeting');
+    const sub = document.getElementById('dash-welcome-sub');
+    const pills = document.getElementById('dash-pills');
+    if (greeting) greeting.textContent = `${saudacao}, ${nome}! 👋`;
+    const abertos = tickets.filter(t => t.status === 'Aberto').length;
+    const urgentes = tickets.filter(t => t.prioridade === 'Urgente' && t.status !== 'Concluído' && t.status !== 'Cancelado').length;
+    const hoje = tickets.filter(t => {
+      const d = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura||0);
+      const n = new Date(); return d.toDateString() === n.toDateString();
+    }).length;
+    if (sub) {
+      const now = new Date();
+      sub.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (pills) {
+      const p = [];
+      p.push(`<span class="dash-pill">📬 ${abertos} abertos</span>`);
+      if (hoje > 0) p.push(`<span class="dash-pill">🆕 ${hoje} hoje</span>`);
+      if (urgentes > 0) p.push(`<span class="dash-pill alert">🚨 ${urgentes} urgente${urgentes>1?'s':''}</span>`);
+      else p.push(`<span class="dash-pill">✅ Sem urgentes</span>`);
+      pills.innerHTML = p.join('');
+    }
+  }
+
   function updateCharts(filteredTickets) {
     const T = filteredTickets || allTickets;
+    atualizarWelcomeCard(T);
+    const FONT = { family: 'Poppins', size: 11 };
+    const GRID = { color: 'rgba(102,19,208,0.06)' };
+    const TOOLTIP = { backgroundColor: '#1e1b4b', titleFont: { family: 'Poppins', size: 12, weight: '600' }, bodyFont: { family: 'Poppins', size: 11 }, padding: 10, cornerRadius: 8, displayColors: true, boxWidth: 10, boxHeight: 10 };
+
+    // Gráfico 1 — Categorias (doughnut)
     const catCounts = {};
     T.forEach(t => { catCounts[t.categoria] = (catCounts[t.categoria]||0)+1; });
     const catLabels = Object.keys(catCounts).map(k => (CATLABELS[k]||k).replace(/[^\w\s]/g,'').trim());
@@ -1475,59 +1537,66 @@ function updateBadge() {
     if (charts.cat) charts.cat.destroy();
     charts.cat = new Chart(document.getElementById('chart-cat').getContext('2d'), {
       type: 'doughnut',
-      data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#6613D0','#FF6B2B','#12b76a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6'], borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', onClick: null, labels: { font: { family: 'Poppins', size: 11 }, padding: 12, boxWidth: 12, color: '#1e1b4b' } } } }
+      data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#6613D0','#FF6B2B','#12b76a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4'], borderWidth: 3, borderColor: 'var(--surface)', hoverOffset: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'right', onClick: null, labels: { font: FONT, padding: 14, boxWidth: 10, boxHeight: 10, color: '#1e1b4b' } }, tooltip: { ...TOOLTIP } } }
     });
 
+    // Gráfico 2 — Status (barras verticais)
     const statuses = ['Aberto','Em andamento','Aguardando aprovação','Concluído','Cancelado'];
-    const statusColors = ['#0ea5e9','#d97706','#9333ea','#12b76a','#8e91a8'];
+    const statusLabels = ['Aberto','Em andamento','Aguard. aprov.','Concluído','Cancelado'];
+    const statusColors = ['#6613D0','#FF6B2B','#8b5cf6','#12b76a','#94a3b8'];
     if (charts.status) charts.status.destroy();
     charts.status = new Chart(document.getElementById('chart-status').getContext('2d'), {
       type: 'bar',
-      data: { labels: statuses, datasets: [{ data: statuses.map(s => T.filter(t=>t.status===s).length), backgroundColor: statusColors, borderRadius: 6, borderSkipped: false }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { family: 'Sora' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Sora', size: 10 } }, grid: { display: false } } } }
+      data: { labels: statusLabels, datasets: [{ data: statuses.map(s => T.filter(t=>t.status===s).length), backgroundColor: statusColors.map(c => c + 'cc'), borderRadius: 8, borderSkipped: false, hoverBackgroundColor: statusColors }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...TOOLTIP } }, scales: { y: { beginAtZero: true, ticks: { font: FONT, stepSize: 1 }, grid: GRID }, x: { ticks: { font: { ...FONT, size: 10 } }, grid: { display: false } } } }
     });
 
+    // Gráfico 3 — Evolução mensal (linha)
     const months = [], monthCounts = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
-      months.push(d.toLocaleString('pt-BR', { month: 'short' }));
+      months.push(d.toLocaleString('pt-BR', { month: 'short' }).replace('.',''));
       monthCounts.push(T.filter(t => { const td = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura||0); return td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear(); }).length);
     }
     if (charts.monthly) charts.monthly.destroy();
     charts.monthly = new Chart(document.getElementById('chart-monthly').getContext('2d'), {
       type: 'line',
-      data: { labels: months, datasets: [{ data: monthCounts, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#6613D0', pointRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { family: 'Sora' } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { family: 'Sora' } }, grid: { display: false } } } }
+      data: { labels: months, datasets: [{ data: monthCounts, borderColor: '#6613D0', backgroundColor: 'rgba(102,19,208,0.07)', tension: 0.45, fill: true, pointBackgroundColor: '#fff', pointBorderColor: '#6613D0', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...TOOLTIP } }, scales: { y: { beginAtZero: true, ticks: { font: FONT, stepSize: 1 }, grid: GRID }, x: { ticks: { font: FONT }, grid: { display: false } } } }
     });
 
-    const prios = ['Urgente','Alta','Média','Baixa'], colors = ['#ef4444','#e45c10','#d97706','#12b76a'];
+    // SLA bars
+    const prios = ['Urgente','Alta','Média','Baixa'], slaColors = ['#ef4444','#FF6B2B','#f59e0b','#12b76a'];
     document.getElementById('sla-bars').innerHTML = prios.map((p, i) => {
       const done = T.filter(t=>t.prioridade===p&&t.status==='Concluído').length;
       const cancelled = T.filter(t=>t.prioridade===p&&t.status==='Cancelado').length;
       const base = done + cancelled;
       const pct = base > 0 ? Math.round((done/base)*100) : 0;
-      return `<div class="sla-bar-row"><span class="sla-bar-label">${p}</span><div class="sla-bar-track"><div class="sla-bar-fill" style="width:${pct}%;background:${colors[i]};"></div></div><span class="sla-bar-count">${pct}%</span></div>`;
+      return `<div class="sla-bar-row"><span class="sla-bar-label">${p}</span><div class="sla-bar-track"><div class="sla-bar-fill" style="width:${pct}%;background:${slaColors[i]};border-radius:3px;"></div></div><span class="sla-bar-count" style="color:${slaColors[i]};font-weight:700;">${pct}%</span></div>`;
     }).join('');
 
+    // Gráfico 4 — Top solicitantes (barras horizontais)
     const deptCounts = {};
     T.forEach(t => {
       const nome = (t.titulo||t.nome||'').trim();
       if (nome && nome !== 'Sem chamados registrados no período') deptCounts[nome]=(deptCounts[nome]||0)+1;
     });
-    const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const sorted = Object.entries(deptCounts).sort((a,b)=>b[1]-a[1]).slice(0,7);
     if (charts.dept) charts.dept.destroy();
     charts.dept = new Chart(document.getElementById('chart-dept').getContext('2d'), {
       type: 'bar',
-      data: { labels: sorted.map(x=>x[0].length>20?x[0].substring(0,18)+'…':x[0]), datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: 'rgba(102,19,208,0.7)', borderRadius: 6, borderSkipped: false }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { font: { family: 'Sora', size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { family: 'Sora', size: 10 } }, grid: { display: false } } } }
+      data: { labels: sorted.map(x=>x[0].length>22?x[0].substring(0,20)+'…':x[0]), datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map((_,i) => `rgba(102,19,208,${0.9 - i*0.1})`), borderRadius: 6, borderSkipped: false }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...TOOLTIP } }, scales: { x: { beginAtZero: true, ticks: { font: FONT, stepSize: 1 }, grid: GRID }, y: { ticks: { font: { ...FONT, size: 10 } }, grid: { display: false } } } }
     });
 
+    // Gráfico 5 — Prioridade (doughnut)
+    const prioLabels = ['Baixa','Média','Alta','Urgente'], prioColors = ['#12b76a','#f59e0b','#FF6B2B','#ef4444'];
     if (charts.prio) charts.prio.destroy();
     charts.prio = new Chart(document.getElementById('chart-prio').getContext('2d'), {
       type: 'doughnut',
-      data: { labels: ['Baixa','Média','Alta','Urgente'], datasets: [{ data: ['Baixa','Média','Alta','Urgente'].map(p => T.filter(t=>t.prioridade===p).length), backgroundColor: ['#12b76a','#d97706','#e45c10','#ef4444'], borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Sora', size: 11 }, padding: 12 } } } }
+      data: { labels: prioLabels, datasets: [{ data: prioLabels.map(p => T.filter(t=>t.prioridade===p).length), backgroundColor: prioColors.map(c => c + 'cc'), borderWidth: 3, borderColor: 'var(--surface)', hoverOffset: 6, hoverBackgroundColor: prioColors }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'right', labels: { font: FONT, padding: 14, boxWidth: 10, boxHeight: 10 } }, tooltip: { ...TOOLTIP } } }
     });
   }
 
