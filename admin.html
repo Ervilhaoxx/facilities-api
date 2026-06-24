@@ -1263,6 +1263,18 @@
   window._auth = auth;
   const db = getFirestore(app);
   window.db = db;
+  window.diasUteisPassados = function(dataInicio) {
+    var d = new Date(dataInicio); d.setHours(0,0,0,0);
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var count = 0;
+    var cur = new Date(d);
+    while (cur < hoje) {
+      var dow = cur.getDay();
+      if (dow >= 1 && dow <= 4) count++;
+      cur.setDate(cur.getDate()+1);
+    }
+    return count;
+  };
   window._doc = doc;
   window._updateDoc = updateDoc;
   window._addDoc = addDoc;
@@ -1614,19 +1626,7 @@ function updateBadge() {
     });
   }
 
-  function diasUteisPassados(dataInicio) {
-    var d = new Date(dataInicio); d.setHours(0,0,0,0);
-    var hoje = new Date(); hoje.setHours(0,0,0,0);
-    var count = 0;
-    var cur = new Date(d);
-    while (cur < hoje) {
-      var dow = cur.getDay();
-      if (dow >= 1 && dow <= 4) count++; // seg a qui — sexta/sáb/dom não contam
-      cur.setDate(cur.getDate()+1);
-    }
-    return count;
-  }
-  window.diasUteisPassados = diasUteisPassados;
+
 
   function renderKanban() {
     // Mapeamento fase_pipefy → coluna
@@ -1691,7 +1691,7 @@ function updateBadge() {
         if (t.status!=='Concluído' && t.status!=='Cancelado' && t.data_abertura) {
           const _ab = t.data_abertura.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura);
           const _dias = SLA_DIAS_K[t.categoria]||7;
-          const _pass = diasUteisPassados(_ab);
+          const _pass = window.diasUteisPassados(_ab);
           const _pct = Math.min(100,Math.round((_pass/_dias)*100));
           const _rest = _dias-_pass;
           const _sc = _pct>=100?'#ef4444':_pct>=75?'#f59e0b':'#12b76a';
@@ -1848,7 +1848,7 @@ function updateBadge() {
         const SLA_DIAS = {brindes:5,suprimentos:7,manutencao:60,reforma:60,seguranca:2,logistica:3,outros:7,infraestrutura:7,limpeza:7,plataformas:3,gestao:7};
         const diasSLA = SLA_DIAS[t.categoria] || 7;
         const abertura = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura);
-        const diasPassados = diasUteisPassados ? diasUteisPassados(abertura) : Math.floor((Date.now()-abertura.getTime())/86400000);
+        const diasPassados = diasUteisPassados ? window.diasUteisPassados(abertura) : Math.floor((Date.now()-abertura.getTime())/86400000);
         const restam = diasSLA - diasPassados;
         if (restam < 0) return '<span class="sla-badge sla-vencido">⚠ Vencido</span>';
         if (restam <= 1) return '<span class="sla-badge sla-risco">⏱ ' + restam.toFixed(0) + 'd</span>';
