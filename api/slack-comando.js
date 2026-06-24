@@ -570,6 +570,46 @@ async function publishHome(userId) {
 }
 
 module.exports = async function handler(req, res) {
+  // Enviar boas-vindas manualmente (admin only)
+  if (req.query?.send_welcome === 'sim_joao') {
+    try {
+      const userId = 'U09MEN4BS0N'; // Slack ID do Joao
+      await db.collection('slack_home_welcomed').doc(userId).delete();
+      const dmResp = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SLACK_BOT_TOKEN}` },
+        body: JSON.stringify({ users: userId })
+      });
+      const dmData = await dmResp.json();
+      if (!dmData.ok) return res.status(200).json({ erro: 'conversations.open falhou', detalhe: dmData });
+      const channel = dmData.channel?.id;
+      const msgResp = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SLACK_BOT_TOKEN}` },
+        body: JSON.stringify({
+          channel,
+          text: 'Olá! Sou o assistente de Facilities da LogComex 👋',
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: "*Olá! Sou o assistente de Facilities da LogComex* 👋\n\nPode falar comigo naturalmente — me diz o que você precisa e eu cuido do resto!\n\nOu escolha uma categoria pra começar:" } },
+            { type: 'actions', elements: [
+              { type: 'button', text: { type: 'plain_text', text: '🎁 Pedir brinde', emoji: true }, style: 'primary', action_id: 'bv_brinde', value: 'brindes' },
+              { type: 'button', text: { type: 'plain_text', text: '📦 Logística', emoji: true }, action_id: 'bv_logistica', value: 'logistica' },
+              { type: 'button', text: { type: 'plain_text', text: '🔧 Manutenção', emoji: true }, action_id: 'bv_manutencao', value: 'manutencao' },
+            ]},
+            { type: 'actions', elements: [
+              { type: 'button', text: { type: 'plain_text', text: '📎 Suprimentos', emoji: true }, action_id: 'bv_suprimentos', value: 'suprimentos' },
+              { type: 'button', text: { type: 'plain_text', text: '🔑 Acessos', emoji: true }, action_id: 'bv_acessos', value: 'acessos' },
+              { type: 'button', text: { type: 'plain_text', text: '📝 Outro assunto', emoji: true }, action_id: 'bv_outros', value: 'outros' },
+            ]}
+          ]
+        })
+      });
+      const msgData = await msgResp.json();
+      await db.collection('slack_home_welcomed').doc(userId).set({ at: new Date() });
+      return res.status(200).json({ ok: msgData.ok, channel, erro: msgData.error || null });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   // Reset flag boas-vindas (admin only)
   if (req.query?.reset_welcome === 'sim_joao') {
     try {
