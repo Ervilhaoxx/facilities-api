@@ -344,8 +344,12 @@
   .history-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); margin-top: 6px; flex-shrink: 0; }
   .history-action { font-size: 0.84rem; color: var(--ink2); }
   .history-meta { font-size: 0.73rem; color: var(--ink3); margin-top: 2px; }
-  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--black); color: #fff; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 0.87rem; z-index: 999; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; border: 1px solid rgba(102,19,208,0.3); }
-  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: #1e1b4b; color: #fff; padding: 14px 18px; border-radius: 14px; font-size: 0.85rem; z-index: 9999; opacity: 0; transform: translateY(16px) scale(0.97); transition: all 0.3s cubic-bezier(.34,1.56,.64,1); pointer-events: none; border: 1px solid rgba(102,19,208,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.25); max-width: 320px; display: flex; align-items: flex-start; gap: 10px; }
+  .toast.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .toast-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+  .toast-body { flex: 1; }
+  .toast-title { font-weight: 700; font-size: 0.82rem; margin-bottom: 2px; }
+  .toast-msg { font-size: 0.78rem; opacity: 0.75; line-height: 1.4; }
   /* ── VIEWER MODE — Leandro vê só Brindes ── */
   .viewer-mode .nav-item { display: none !important; }
   .viewer-mode .nav-group { display: none !important; }
@@ -1242,7 +1246,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"><span class="toast-icon" id="toast-icon">🔔</span><div class="toast-body"><div class="toast-title" id="toast-title"></div><div class="toast-msg" id="toast-msg"></div></div></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1372,12 +1376,45 @@ const isAdminOrViewer = (email) => {
     }
 
     const tq = query(collection(db, 'tickets'), orderBy('data_abertura', 'desc'));
+    let _prevTicketIds = null;
     onSnapshot(tq, (snap) => {
-      allTickets = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      const newDocs = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+
+      // Detectar tickets novos após carregamento inicial
+      if (_prevTicketIds !== null) {
+        snap.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            const t = { _docId: change.doc.id, ...change.doc.data() };
+            // Só notifica se aberto há menos de 30 segundos
+            const abertura = t.data_abertura?.toDate ? t.data_abertura.toDate() : new Date(t.data_abertura || 0);
+            if (Date.now() - abertura.getTime() < 30000) {
+              const catLabel = CATLABELS[t.categoria] || t.categoria || '';
+              showToast(
+                `${t.nome || t.email || 'Colaborador'} · ${catLabel}`,
+                `🔔 Novo chamado #${t.id || ''}`,
+                '🔔'
+              );
+              // Notificação do browser se permitida
+              if (Notification.permission === 'granted') {
+                new Notification('Novo chamado · Facilities', {
+                  body: `${t.titulo || ''} — ${t.nome || ''}`,
+                  icon: '/favicon.svg'
+                });
+              }
+            }
+          }
+        });
+      }
+      _prevTicketIds = new Set(snap.docs.map(d => d.id));
+
+      allTickets = newDocs;
       window.allTickets = allTickets;
       updateMetrics(); renderTable(); renderKanban(); updateBadge(); if(typeof initPeriodo==='function'){initPeriodo();}else{updateCharts();}
       if(document.getElementById('page-logistica')?.classList.contains('active') && typeof renderLogistica==='function') renderLogistica();
     });
+
+    // Pedir permissão de notificação do browser
+    if (Notification.permission === 'default') Notification.requestPermission();
 
     const fq = query(collection(db, 'feedbacks'), orderBy('data', 'desc'));
     onSnapshot(fq, (snap) => {
@@ -2600,7 +2637,19 @@ async function syncPipefy() {
 }
 window.syncPipefy = syncPipefy;
 
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function showToast(msg, title, icon) {
+  const t = document.getElementById('toast');
+  const ti = document.getElementById('toast-icon');
+  const tt = document.getElementById('toast-title');
+  const tm = document.getElementById('toast-msg');
+  if (ti) ti.textContent = icon || '🔔';
+  if (tt) tt.textContent = title || '';
+  if (tm) tm.textContent = msg || '';
+  t.classList.remove('show');
+  requestAnimationFrame(() => { requestAnimationFrame(() => { t.classList.add('show'); }); });
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 4000);
+}
 window.showToast=showToast;
 
 document.getElementById('rel-mes').value = new Date().getMonth() + 1;
