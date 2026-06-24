@@ -823,16 +823,63 @@ module.exports = async function handler(req, res) {
   }
 
   // ============================================================
-  // ROTA 7b: app_home_opened → publicar Home Tab
+  // ROTA 7b: app_home_opened → publicar Home Tab + boas-vindas no chat
   if (body.type === 'event_callback' && body.event?.type === 'app_home_opened') {
     const userId = body.event.user;
     res.status(200).send('');
-    try { await publishHome(userId); } catch(e) { console.error('home tab:', e.message); }
+    try {
+      await publishHome(userId);
+      // Boas-vindas no chat apenas na primeira vez
+      const flagRef = db.collection('slack_home_welcomed').doc(userId);
+      const flag = await flagRef.get();
+      if (!flag.exists) {
+        await flagRef.set({ at: new Date() });
+        // Abrir DM
+        const dmResp = await fetch('https://slack.com/api/conversations.open', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SLACK_BOT_TOKEN}` },
+          body: JSON.stringify({ users: userId })
+        });
+        const channel = (await dmResp.json()).channel?.id;
+        if (channel) {
+          await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SLACK_BOT_TOKEN}` },
+            body: JSON.stringify({
+              channel,
+              text: 'Olá! Sou o assistente de Facilities da LogComex 👋',
+              blocks: [
+                {
+                  type: 'section',
+                  text: { type: "mrkdwn", text: "*Olá! Sou o assistente de Facilities da LogComex* 👋\n\nPode falar comigo naturalmente — me diz o que você precisa e eu cuido do resto!\n\nOu escolha uma categoria pra começar:" }
+                },
+                {
+                  type: 'actions',
+                  elements: [
+                    { type: 'button', text: { type: 'plain_text', text: '🎁 Pedir brinde', emoji: true }, style: 'primary', action_id: 'bv_brinde', value: 'brindes' },
+                    { type: 'button', text: { type: 'plain_text', text: '📦 Logística', emoji: true }, action_id: 'bv_logistica', value: 'logistica' },
+                    { type: 'button', text: { type: 'plain_text', text: '🔧 Manutenção', emoji: true }, action_id: 'bv_manutencao', value: 'manutencao' },
+                  ]
+                },
+                {
+                  type: 'actions',
+                  elements: [
+                    { type: 'button', text: { type: 'plain_text', text: '📎 Suprimentos', emoji: true }, action_id: 'bv_suprimentos', value: 'suprimentos' },
+                    { type: 'button', text: { type: 'plain_text', text: '🔑 Acessos', emoji: true }, action_id: 'bv_acessos', value: 'acessos' },
+                    { type: 'button', text: { type: 'plain_text', text: '📝 Outro assunto', emoji: true }, action_id: 'bv_outros', value: 'outros' },
+                  ]
+                }
+              ]
+            })
+          });
+        }
+      }
+    } catch(e) { console.error('home tab:', e.message); }
     return;
   }
 
-  // ROTA 7b2: block_actions da Home Tab — botões de atalho
-  if (body.type === 'block_actions' && body.view?.type === 'home') {
+  // ROTA 7b2: block_actions — botões de atalho (Home Tab + boas-vindas)
+  if (body.type === 'block_actions' && (body.view?.type === 'home' || ['bv_brinde','bv_logistica','bv_manutencao','bv_suprimentos','bv_acessos','bv_outros','home_brinde','home_logistica','home_manutencao','home_suprimentos','home_acessos','home_outros'].includes(body.actions?.[0]?.action_id))) {
     const userId = body.user?.id;
     const categoria = body.actions?.[0]?.value;
     res.status(200).send('');
