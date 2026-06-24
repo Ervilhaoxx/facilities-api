@@ -13,7 +13,6 @@
 
 const admin = require('firebase-admin');
 const crypto = require('crypto');
-const { publishHome } = require('./slack-home');
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -805,6 +804,53 @@ module.exports = async function handler(req, res) {
   }
 
   // ============================================================
+  // publishHome — publica a Home Tab do bot
+  async function publishHome(userId) {
+    let chamadosAbertos = [];
+    try {
+      const snap = await db.collection('tickets')
+        .where('slack_user_id', '==', userId)
+        .where('status', 'in', ['Aberto', 'Em andamento', 'Aguardando aprovação'])
+        .orderBy('data_abertura', 'desc').limit(3).get();
+      chamadosAbertos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    } catch(e) {}
+    const STATUS_EMOJI = {'Aberto':'🔵','Em andamento':'🟠','Aguardando aprovação':'🟣'};
+    const chamadosBlocks = chamadosAbertos.length > 0 ? [
+      {type:'section', text:{type:'mrkdwn', text:'*Seus chamados em aberto:*'}},
+      ...chamadosAbertos.map(c => ({type:'section', text:{type:'mrkdwn', text:`${STATUS_EMOJI[c.status]||'⚪'} *${c.titulo||'Chamado'}*\n_${c.status}_ · ${c.categoria||''}`}})),
+      {type:'divider'}
+    ] : [];
+    const view = {
+      type: 'home',
+      blocks: [
+        {type:'section', text:{type:'mrkdwn', text:'*🏢 Facilities LogComex*\nOlá! Sou seu assistente de facilities. Pode falar comigo naturalmente — me diga o que precisa e eu cuido do resto.'}},
+        {type:'divider'},
+        ...chamadosBlocks,
+        {type:'section', text:{type:'mrkdwn', text:'*⚡ Atalhos rápidos*\nClique para iniciar uma conversa:'}},
+        {type:'actions', elements:[
+          {type:'button', text:{type:'plain_text', text:'🎁 Pedir brinde', emoji:true}, style:'primary', action_id:'home_brinde', value:'brindes'},
+          {type:'button', text:{type:'plain_text', text:'📦 Logística', emoji:true}, action_id:'home_logistica', value:'logistica'},
+          {type:'button', text:{type:'plain_text', text:'🔧 Manutenção', emoji:true}, action_id:'home_manutencao', value:'manutencao'},
+        ]},
+        {type:'actions', elements:[
+          {type:'button', text:{type:'plain_text', text:'📎 Suprimentos', emoji:true}, action_id:'home_suprimentos', value:'suprimentos'},
+          {type:'button', text:{type:'plain_text', text:'🔑 Acessos', emoji:true}, action_id:'home_acessos', value:'acessos'},
+          {type:'button', text:{type:'plain_text', text:'📝 Outro assunto', emoji:true}, action_id:'home_outros', value:'outros'},
+        ]},
+        {type:'divider'},
+        {type:'context', elements:[{type:'mrkdwn', text:'💬 Ou simplesmente me mande uma mensagem direta — eu entendo linguagem natural!'}]}
+      ]
+    };
+    const resp = await fetch('https://slack.com/api/views.publish', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SLACK_BOT_TOKEN}`},
+      body: JSON.stringify({user_id: userId, view})
+    });
+    const data = await resp.json();
+    if (!data.ok) console.error('views.publish error:', data.error);
+    return data.ok;
+  }
+
   // ROTA 7b: app_home_opened → publicar Home Tab
   // ============================================================
   if (body.type === 'event_callback' && body.event?.type === 'app_home_opened') {
