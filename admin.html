@@ -1376,6 +1376,7 @@ const isAdminOrViewer = (email) => {
       allTickets = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
       window.allTickets = allTickets;
       updateMetrics(); renderTable(); renderKanban(); updateBadge(); if(typeof initPeriodo==='function'){initPeriodo();}else{updateCharts();}
+      if(document.getElementById('page-logistica')?.classList.contains('active') && typeof renderLogistica==='function') renderLogistica();
     });
 
     const fq = query(collection(db, 'feedbacks'), orderBy('data', 'desc'));
@@ -2721,7 +2722,7 @@ window.initPeriodo = initPeriodo;
 
 let chartsLog = {};
 function renderLogistica() {
-  const logT = allTickets.filter(t => t.categoria === 'logistica' || t.transportadora === 'DHL' || t.transportadora === 'Correio' || t.transportadora === 'Uber Flash');
+  const logT = allTickets.filter(t => t.transportadora === 'DHL' || t.transportadora === 'Correio' || t.transportadora === 'Uber Flash' || t.categoria === 'logistica');
   const dhl = logT.filter(t => t.transportadora === 'DHL' || t.subcategoria === 'DHL').length;
   const cor = logT.filter(t => t.transportadora === 'Correio' || t.subcategoria === 'Correio').length;
   const uber = logT.filter(t => t.transportadora === 'Uber Flash' || t.subcategoria === 'Uber Flash').length;
