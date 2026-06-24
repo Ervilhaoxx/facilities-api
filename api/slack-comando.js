@@ -1031,41 +1031,31 @@ async function analisarMensagem(texto, estadoAnterior = null) {
     return analisarPorPalavrasChave(texto);
   }
 
-  const systemPrompt = `Você é um assistente do time de Facilities da LogComex. Sua tarefa é interpretar QUALQUER mensagem de colaborador como uma solicitação de chamado e extrair info estruturada.
+  const systemPrompt = `Você é o assistente de Facilities da LogComex. Converse de forma natural e amigável — como um colega prestativo, não um sistema robótico.
 
-REGRAS IMPORTANTES:
-1. SEMPRE marcar tem_info_suficiente: true (a pessoa vai confirmar depois com botão, então NÃO pergunte detalhes)
-2. SEMPRE sugerir uma categoria — se estiver em dúvida, use "outros"
-3. SEMPRE criar um título curto e descritivo a partir do que a pessoa disse
-4. NUNCA pedir mais detalhes — pergunta_adicional sempre null
-5. Só marcar saudacao_apenas: true se for EXCLUSIVAMENTE uma saudação ("oi", "olá", "bom dia"). Se tiver QUALQUER pedido junto ("oi, preciso de um mouse"), é solicitação, não saudação.
+PERSONALIDADE: Respostas curtas (1-3 frases), use emojis com moderação, seja direto e adapte o tom da pessoa. NUNCA liste exemplos ou instruções.
 
-Categorias disponíveis (responda EXATAMENTE com um destes valores):
-- suprimentos: papelaria, material de escritório (mouse, teclado, caneta, papel, grampeador, fone, suporte)
-- manutencao: consertos, problemas físicos (ar condicionado, lâmpada, vazamento, móvel quebrado, porta, fechadura)
-- reforma: melhorias estruturais maiores (reforma de sala, novo layout, pintura)
-- acessos: criar/remover/alterar acesso a plataformas (Google, Slack, sistemas, e-mail, VPN)
-- brindes: brindes da empresa (moleskine, container, garrafa, copo, sacola, caneta brinde, tapa câmera)
-- logistica: envio/recebimento de pacotes (DHL, Correios, Uber Flash, motoboy)
-- outros: quando realmente não souber em qual encaixar
+SEU OBJETIVO: Ajudar a pessoa a abrir um chamado de facilities de forma conversacional.
 
-Prioridade:
-- baixa: rotina, "quando puder", "sem pressa"
-- media: padrão (use isso na dúvida)
-- alta: urgente, "preciso hoje", "parou", "quebrou", "não consigo trabalhar", "emergência"
+FLUXO:
+1. Saudação simples ("oi", "olá") → responda amigável e pergunte como pode ajudar
+2. Problema/necessidade clara → entenda, confirme em uma frase, pergunte se quer abrir o chamado
+3. Dúvida sobre o que precisa → faça UMA pergunta objetiva
+4. Confirmação → pronto_para_abrir: true
 
-RESPONDA APENAS COM UM JSON VÁLIDO no formato:
+CATEGORIAS (use internamente, não mencione):
+suprimentos, manutencao, reforma, acessos, brindes, logistica, outros
+
+RESPONDA SEMPRE COM JSON:
 {
-  "categoria": "suprimentos" | "manutencao" | "reforma" | "acessos" | "brindes" | "logistica" | "outros",
-  "titulo": "Frase curta resumindo (máx 80 chars)",
-  "descricao": "Texto completo enviado pela pessoa, formatado",
-  "prioridade": "baixa" | "media" | "alta",
-  "tem_info_suficiente": true,
-  "pergunta_adicional": null,
-  "saudacao_apenas": false
-}
-
-Lembre-se: a pessoa SEMPRE poderá editar ou cancelar depois pelos botões. Seu trabalho é só extrair o melhor possível.`;
+  "resposta_usuario": "mensagem natural e curta pra pessoa",
+  "pronto_para_abrir": true ou false,
+  "categoria": "categoria ou null",
+  "titulo": "titulo curto se pronto_para_abrir=true, senao null",
+  "descricao": "descricao se pronto_para_abrir=true, senao null",
+  "prioridade": "baixa/media/alta",
+  "saudacao_apenas": true ou false
+}`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1197,19 +1187,9 @@ async function processarMensagemDM(evt) {
     await log('depois_IA', { categoria: analise?.categoria, titulo: (analise?.titulo || '').substring(0, 40), suficiente: analise?.tem_info_suficiente });
     console.log('[processarMensagemDM] análise:', JSON.stringify(analise).substring(0, 200));
 
-    // Caso 1: IA detectou saudação
-    if (analise.saudacao_apenas) {
-      await log('IA_saudacao');
-      await enviarMensagem(channel, '👋 Olá!', [
-        { type: 'section', text: { type: 'mrkdwn', text: `👋 *Olá!* Sou o assistente do time de Facilities da LogComex.` } },
-        { type: 'section', text: { type: 'mrkdwn', text: `Me conta o que você precisa que eu abro o chamado.\n\n*Exemplos:*\n• _"Preciso de um mouse novo"_\n• _"Ar condicionado da sala 3 com problema"_\n• _"Quero pedir moleskines"_` } }
-      ]);
-      return;
-    }
-
-    // Caso 2: Falta info → faz pergunta
-    if (!analise.tem_info_suficiente && analise.pergunta_adicional) {
-      await log('faltando_info');
+    // Caso 1: IA tem resposta conversacional e ainda não está pronto pra abrir
+    if (analise.resposta_usuario && !analise.pronto_para_abrir) {
+      await log('conversa_natural');
       try {
         await setEstado(userId, {
           etapa: 'aguardando_resposta',
@@ -1218,12 +1198,22 @@ async function processarMensagemDM(evt) {
           descricao: analise.descricao,
           prioridade: analise.prioridade,
           texto_original: texto,
+          saudacao: analise.saudacao_apenas,
         });
       } catch (e) { console.warn('setEstado fail:', e.message); }
-      await enviarMensagem(channel, '🤔', [
-        { type: 'section', text: { type: 'mrkdwn', text: `🤔 ${analise.pergunta_adicional}` } },
-        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Digite "cancelar" para reiniciar.' }] }
-      ]);
+      await enviarMensagem(channel, analise.resposta_usuario);
+      return;
+    }
+
+    // Marcar como pronto pra abrir se IA sinalizou
+    if (analise.pronto_para_abrir) {
+      analise.tem_info_suficiente = true;
+      analise.pergunta_adicional = null;
+    }
+
+    // Caso 2: Saudação sem resposta_usuario (fallback)
+    if (analise.saudacao_apenas && !analise.resposta_usuario) {
+      await enviarMensagem(channel, 'Oi! 👋 Como posso te ajudar hoje?');
       return;
     }
 
