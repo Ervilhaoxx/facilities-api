@@ -1138,6 +1138,13 @@ async function processarMensagemDM(evt) {
   await log('inicio');
   console.log('[processarMensagemDM] início | user:', userId, '| channel:', channel, '| texto:', texto.substring(0, 50));
 
+  // Mostrar "digitando..." enquanto processa
+  fetch('https://slack.com/api/conversations.typing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SLACK_BOT_TOKEN}` },
+    body: JSON.stringify({ channel })
+  }).catch(() => {});
+
   try {
     // Comandos especiais
     if (/^(cancelar|cancel|sair|reset)$/i.test(texto)) {
