@@ -28,7 +28,7 @@
   .unauth-screen h2 { color: #fff; font-size: 1.5rem; font-weight: 700; }
   .unauth-screen p { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
   .btn-back { background: var(--purple); color: #fff; border: none; padding: 12px 28px; border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 0.5rem; }
-  .sidebar { width: var(--sidebar, 220px); background: linear-gradient(180deg, #0B0D19 0%, #1a0a3a 100%); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 0; z-index: 50; overflow: hidden; border-right: 1px solid rgba(226,208,250,0.06); }
+  .sidebar { width: var(--sidebar, 220px); background: var(--black); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding: 0; z-index: 50; overflow: hidden; }
   .sidebar-inner { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 1.5rem 1rem; display: flex; flex-direction: column; }
   .sidebar-inner::-webkit-scrollbar { width: 3px; }
   .sidebar-inner::-webkit-scrollbar-track { background: transparent; }
@@ -74,10 +74,8 @@
   .nav-item.active {
     background: rgba(102,19,208,0.18);
     color: var(--purple-mid);
-    box-shadow: inset 3px 0 0 var(--purple);
-    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--purple);
   }
-  .nav-item.active svg { stroke: var(--purple-mid); }
   .nav-item svg { flex-shrink: 0; }
 
   /* Mantém compat com nav-group/nav-sub-item antigos (caso reste algum) */
@@ -181,16 +179,8 @@
   .main::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
   .page { display: none; }
   .page.active { display: block; }
-  .topbar, .page-topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    margin: -2rem -2rem 2rem;
-    padding: 1rem 2rem;
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 1px 4px rgba(45,8,93,0.05);
-    flex-wrap: wrap; gap: 1rem;
-  }
-  .page-title { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.04em; font-family: 'Funnel Display', 'Poppins', sans-serif; }
+  .topbar, .page-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem; }
+  .page-title { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.04em; }
   .topbar-actions { display: flex; gap: 10px; align-items: center; }
   .btn { padding: 9px 18px; border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
   .btn-primary { background: var(--purple); color: #fff; border: none; box-shadow: 0 3px 10px rgba(102,19,208,0.25); }
@@ -198,38 +188,9 @@
   .btn-secondary { background: var(--surface); color: var(--ink2); border: 1px solid var(--border); }
   .btn-secondary:hover { background: var(--purple-light); }
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-  .metric-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.25rem 1.4rem;
-  position: relative;
-  overflow: hidden;
-  transition: transform 200ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 200ms;
-  cursor: default;
-}
-.metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-.metric-card.purple::before { background: linear-gradient(90deg, #6613D0, #8E44ED); }
-.metric-card.orange::before { background: #FE8F1C; }
-.metric-card.green::before  { background: #16a34a; }
-.metric-card.red::before    { background: #dc2626; }
-.metric-card.blue::before   { background: linear-gradient(90deg, #6613D0, #8E44ED); }
-.metric-card.gray::before   { background: var(--border); }
-  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(102,19,208,0.12), 0 2px 8px rgba(11,13,25,0.06); }
-  .metric-card-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 0.9rem; border: 1px solid var(--border); }
-  .metric-card-icon svg { flex-shrink: 0; }
-  .metric-card.purple .metric-card-icon svg { stroke: #6613D0; }
-  .metric-card.orange .metric-card-icon svg { stroke: #FF6B2B; }
-  .metric-card.green  .metric-card-icon svg { stroke: #16a34a; }
-  .metric-card.red    .metric-card-icon svg { stroke: #dc2626; }
-  .metric-card.blue   .metric-card-icon svg { stroke: #6613D0; }
-  .metric-card.gray   .metric-card-icon svg { stroke: #6b7280; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; position: relative; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; cursor: default; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102,19,208,0.10); }
+  .metric-card-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 0.9rem; }
   .metric-card.purple .metric-card-icon { background: rgba(102,19,208,0.12); }
   .metric-card.orange .metric-card-icon { background: rgba(255,107,43,0.12); }
   .metric-card.green .metric-card-icon { background: rgba(18,183,106,0.12); }
@@ -257,24 +218,7 @@
   .dash-welcome-pills { display: flex; gap: 8px; flex-wrap: wrap; }
   .dash-pill { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; backdrop-filter: blur(4px); }
   .dash-pill.alert { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); }
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    position: relative;
-    overflow: hidden;
-    transition: box-shadow 200ms;
-  }
-  .chart-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #6613D0, #8E44ED);
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
-  .chart-card:hover { box-shadow: 0 4px 20px rgba(102,19,208,0.08); }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
   .chart-title { font-weight: 700; font-size: 0.9rem; color: var(--ink); margin-bottom: 0.3rem; letter-spacing: -0.01em; }
   .chart-sub { font-size: 0.75rem; color: var(--ink3); margin-bottom: 1.2rem; }
   .chart-wrap { position: relative; height: 220px; }
@@ -343,11 +287,10 @@
   select.fi-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e91a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; appearance: none; }
   .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
-  thead th { padding: 12px 14px; text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 120ms cubic-bezier(0.2,0.8,0.2,1); cursor: pointer; }
-  tbody tr:nth-child(even) { background: rgba(102,19,208,0.02); }
+  thead th { padding: 12px 14px; text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.07em; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; cursor: pointer; }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(102,19,208,0.06) !important; }
+  tbody tr:hover { background: var(--purple-light); }
   td { padding: 13px 14px; color: var(--ink2); vertical-align: middle; }
   .tid { font-weight: 700; font-size: 0.78rem; color: var(--purple); }
   .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-size: 0.73rem; font-weight: 600; white-space: nowrap; }
@@ -745,12 +688,12 @@
     <div id="periodo-desc" style="width:100%;font-size:0.78rem;color:var(--ink3);margin-top:-0.5rem;margin-bottom:0.5rem;"></div>
 
     <div class="metrics-grid">
-      <div class="metric-card purple"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
-      <div class="metric-card orange"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
-      <div class="metric-card green"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub" id="m-co-sub">no período</div></div>
-      <div class="metric-card red"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
-      <div class="metric-card blue"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
-      <div class="metric-card gray"><div class="metric-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
+      <div class="metric-card purple"><div class="metric-card-icon">📬</div><div class="metric-label">Abertos</div><div class="metric-value" id="m-ab">0</div><div class="metric-sub">aguardando ação</div></div>
+      <div class="metric-card orange"><div class="metric-card-icon">⚙️</div><div class="metric-label">Em andamento</div><div class="metric-value" id="m-an">0</div><div class="metric-sub">em execução</div></div>
+      <div class="metric-card green"><div class="metric-card-icon">✅</div><div class="metric-label">Concluídos</div><div class="metric-value" id="m-co">0</div><div class="metric-sub" id="m-co-sub">no período</div></div>
+      <div class="metric-card red"><div class="metric-card-icon">🚨</div><div class="metric-label">Urgentes</div><div class="metric-value" id="m-ur">0</div><div class="metric-sub">atenção imediata</div></div>
+      <div class="metric-card blue"><div class="metric-card-icon">🎯</div><div class="metric-label">SLA</div><div class="metric-value" id="m-sla">–</div><div class="metric-sub">taxa de conclusão</div></div>
+      <div class="metric-card gray"><div class="metric-card-icon">📊</div><div class="metric-label">Total</div><div class="metric-value" id="m-to">0</div><div class="metric-sub">todos os chamados</div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Chamados por Categoria</div><div class="chart-sub">Distribuição total de chamados</div><div class="chart-wrap"><canvas id="chart-cat"></canvas></div></div>
@@ -1133,12 +1076,41 @@
 
     <!-- ═══ CONTROLE — SAÍDAS ═══ -->
     <div class="page" id="page-controle-saidas">
-      <div class="topbar"><div class="page-title">📤 Saídas</div></div>
+      <div class="topbar">
+        <div><div class="page-title">📤 Saídas</div><div style="font-size:0.82rem;color:var(--ink3);margin-top:2px;">Registro de todas as entregas de estoque</div></div>
+      </div>
       <div style="padding:0 0.5rem;">
-        <div class="imob-header">
-          <div><div class="imob-title">Histórico de Saídas</div><div style="font-size:0.82rem;color:var(--ink2);margin-top:2px;">Registro de todas as entregas realizadas</div></div>
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;" id="saidas-kpis">
+          <div class="metric-card purple"><div class="metric-card-icon">📤</div><div class="metric-label">Total Saídas</div><div class="metric-value" id="sk-total">0</div></div>
+          <div class="metric-card orange"><div class="metric-card-icon">🎁</div><div class="metric-label">Brindes</div><div class="metric-value" id="sk-brindes">0</div></div>
+          <div class="metric-card blue"><div class="metric-card-icon">💻</div><div class="metric-label">TI</div><div class="metric-value" id="sk-ti">0</div></div>
+          <div class="metric-card green"><div class="metric-card-icon">🎒</div><div class="metric-label">Onboarding</div><div class="metric-value" id="sk-onboard">0</div></div>
         </div>
-        <div id="lista-saidas"><div class="imob-empty"><div class="imob-empty-icon">📤</div><div>Nenhuma saída registrada</div></div></div>
+        <!-- Filtro -->
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+          <select id="saidas-filtro-tipo" onchange="renderSaidas()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;color:var(--ink);">
+            <option value="">Todos os tipos</option>
+            <option value="saida_ti">Estoque TI</option>
+            <option value="kit_onboarding">Kit Onboarding</option>
+            <option value="brinde">Brinde</option>
+          </select>
+          <input id="saidas-busca" type="text" placeholder="Buscar por item ou responsável..." oninput="renderSaidas()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;color:var(--ink);flex:1;min-width:200px;">
+        </div>
+        <!-- Tabela -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="background:var(--surface2);">
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Data</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Tipo</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Item</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Qtd</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Responsável</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;">Obs</th>
+            </tr></thead>
+            <tbody id="saidas-tbody"><tr><td colspan="6" style="padding:2rem;text-align:center;color:var(--ink3);">Carregando...</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -2333,6 +2305,7 @@ function nav(page, el) {
     }
   }
   if(page==='logistica'&&typeof renderLogistica==='function') renderLogistica();
+  if(page==='controle-saidas'&&typeof renderSaidas==='function') renderSaidas();
   if(page==='historico'&&typeof renderHistorico==='function') renderHistorico();
   // Atualiza hash sem provocar scroll/jump
   if (window.location.hash !== '#'+page) {
@@ -2924,6 +2897,12 @@ window.renderHistorico = renderHistorico;
       window._estoqueOnboarding = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
       renderOnboarding();
     });
+    onSnapshot(collection(db, 'estoque_saidas'), snap => {
+      window._saidasEstoque = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+        .sort((a,b) => { const da = a.data?.toDate?a.data.toDate():new Date(a.data||0); const db2 = b.data?.toDate?b.data.toDate():new Date(b.data||0); return db2-da; });
+      if (document.getElementById('page-controle-saidas')?.classList.contains('active')) renderSaidas();
+    });
+
     onSnapshot(collection(db, 'imob_sublocalizacoes'), snap => {
       imobData.sublocalizacoes = snap.docs.map(d => ({ _id: d.id, ...d.data() })).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
       if (typeof renderSublocalizacoes === 'function') renderSublocalizacoes();
@@ -3247,6 +3226,62 @@ window.renderHistorico = renderHistorico;
     window._updateDoc(window._doc(window.db, 'estoque_ti', id), { quantidade: nova, updatedAt: new Date() })
       .then(() => alert((n>0?'Entrada':'Saida') + ' registrada! Novo estoque: ' + nova))
       .catch(e => alert('Erro: ' + e.message));
+  };
+
+  window.renderSaidas = function() {
+    const saidas = window._saidasEstoque || [];
+    const filtroTipo = document.getElementById('saidas-filtro-tipo')?.value || '';
+    const busca = (document.getElementById('saidas-busca')?.value || '').toLowerCase();
+    const TIPO_LABEL = { saida_ti: '💻 TI', kit_onboarding: '🎒 Kit Onboarding', brinde: '🎁 Brinde' };
+    const TIPO_COR = { saida_ti: '#0ea5e9', kit_onboarding: '#12b76a', brinde: '#FF6B2B' };
+
+    // KPIs
+    const total = saidas.length;
+    const brindes = saidas.filter(s => s.tipo === 'brinde').length;
+    const ti = saidas.filter(s => s.tipo === 'saida_ti').length;
+    const onboard = saidas.filter(s => s.tipo === 'kit_onboarding').length;
+    const skTotal = document.getElementById('sk-total');
+    const skBrindes = document.getElementById('sk-brindes');
+    const skTi = document.getElementById('sk-ti');
+    const skOnboard = document.getElementById('sk-onboard');
+    if (skTotal) skTotal.textContent = total;
+    if (skBrindes) skBrindes.textContent = brindes;
+    if (skTi) skTi.textContent = ti;
+    if (skOnboard) skOnboard.textContent = onboard;
+
+    // Filtrar
+    const filtradas = saidas.filter(s => {
+      if (filtroTipo && s.tipo !== filtroTipo) return false;
+      if (busca) {
+        const texto = ((s.item||'') + ' ' + (s.colaborador||'') + ' ' + (s.criadoPor||'') + ' ' + (s.observacao||'')).toLowerCase();
+        if (!texto.includes(busca)) return false;
+      }
+      return true;
+    });
+
+    const tbody = document.getElementById('saidas-tbody');
+    if (!tbody) return;
+    if (!filtradas.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:2rem;text-align:center;color:var(--ink3);">Nenhuma saída encontrada</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtradas.slice(0, 100).map(s => {
+      const data = s.data?.toDate ? s.data.toDate().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-';
+      const tipo = TIPO_LABEL[s.tipo] || s.tipo || '-';
+      const cor = TIPO_COR[s.tipo] || '#94a3b8';
+      const item = s.item || (s.itens ? s.itens.join(', ') : '-');
+      const qtd = s.quantidade || (s.itens?.length) || '-';
+      const resp = s.criadoPor || s.colaborador || '-';
+      const obs = s.observacao || '-';
+      return `<tr style="border-top:1px solid var(--border);">
+        <td style="padding:10px 14px;font-size:12px;color:var(--ink3);">${data}</td>
+        <td style="padding:10px 14px;"><span style="font-size:11px;background:${cor}1a;color:${cor};padding:2px 8px;border-radius:20px;font-weight:600;">${tipo}</span></td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:500;color:var(--ink);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item}">${item}</td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--purple);">${qtd}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--ink2);">${resp}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--ink3);">${obs}</td>
+      </tr>`;
+    }).join('');
   };
 
   window.abrirMovOnb = function(id) {
